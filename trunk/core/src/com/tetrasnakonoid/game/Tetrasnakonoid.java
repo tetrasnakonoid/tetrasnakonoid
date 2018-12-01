@@ -12,6 +12,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.ParticleEffect;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -235,6 +236,8 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private Label lbl_scores_final, lbl_quote_final;
 	private Table game_over_layout;
 
+	private ParticleEffect explosion;
+
 	private Label lbl_credits;
 	private Texture credits_quit;
 	private Drawable drw_credits_quit;
@@ -274,8 +277,8 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private String last_player_name = "Anonymous";
 
 	private long last_render = 0;
-	public boolean game_over_flag = false;
-	public boolean first_try = true;
+	private boolean game_over_flag = false;
+	private boolean first_try = true;
 	private float
 	todeg(float src) {
 		float pi = (float) Math.PI;
@@ -1002,7 +1005,7 @@ private void prev_tetr_rot() {
 
 	private void game_over(){
 		if (DEBUG) {new_game();}
-		first_try = false;
+
 		game_state = 4;
 		Gdx.input.setInputProcessor(gameover);
 		String scores = String.valueOf(game.scores);
@@ -1016,6 +1019,7 @@ private void prev_tetr_rot() {
 
 		save_cookies();
 
+		explosion.start();
 
 		game_over_flag = true;
 
@@ -1092,10 +1096,11 @@ private void prev_tetr_rot() {
 
 	private void init_gameoverscreen(){
 		game_over_background = new TextureRegion();
+		explosion = new ParticleEffect();
+		explosion.load(Gdx.files.internal("explosion.particle"),Gdx.files.internal(""));
+		explosion.getEmitters().first().setPosition(Gdx.graphics.getWidth()/2,Gdx.graphics.getHeight()/2);
+		explosion.scaleEffect(3.0f);
 
-		/* fnt_game_over;
-		lbl_scores_final;
-		game_over_layout;*/
 
 		drw_game_over_back = new TextureRegionDrawable(new TextureRegion(game_over_quit));
 		btn_game_over_back = new ImageButton(drw_game_over_back);
@@ -1152,6 +1157,7 @@ private void prev_tetr_rot() {
 		btn_game_over_back.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
+				first_try = false;
 				game_state = 0;
 				Gdx.input.setInputProcessor(ui);
 			}
@@ -1524,6 +1530,7 @@ private void prev_tetr_rot() {
 
 	@Override
 	public void create() {
+		Gdx.app.debug("Gdx version", com.badlogic.gdx.Version.VERSION);
 		batch = new SpriteBatch();
 		init_textures();
 		init_music();
@@ -2295,7 +2302,7 @@ private void prev_tetr_rot() {
 		return p;
 	}
 
-	private  void render_game() {
+	private  void render_game(boolean logic) {
 
 		if (DEBUG) {
 			shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
@@ -2303,15 +2310,16 @@ private void prev_tetr_rot() {
 			shapeRenderer.rect(game.vp_x, game.vp_y,  game.vp_w, game.vp_h);
 			shapeRenderer.end();
 		}
-		rack_ai();
-		coll_resolve();
-		animate_ball();
-		if (game.has_lulz_ball) animate_lulz_ball();
-		animate_rack();
-		animate_snake();
-		animate_tetris();
-		update_sprites();
-
+		if (logic) {
+			rack_ai();
+			coll_resolve();
+			animate_ball();
+			if (game.has_lulz_ball) animate_lulz_ball();
+			animate_rack();
+			animate_snake();
+			animate_tetris();
+			update_sprites();
+		}
 		batch.begin();
 		spr_pc_racket.draw(batch);
 		spr_ai_racket.draw(batch);
@@ -2385,9 +2393,11 @@ private void prev_tetr_rot() {
 
 	private  void render_gameover() {
 		batch.begin();
-		batch.draw(game_over_background,0,0);
+		explosion.update(Gdx.graphics.getDeltaTime());
+		explosion.draw(batch);
 		batch.end();
 		gameover.draw();
+
 	}
 
 
@@ -2402,31 +2412,26 @@ private void prev_tetr_rot() {
 
 	@Override
 	public void render () {
-		if (!game_over_flag) {
 			Gdx.gl.glClearColor(OLD_TETRIS_COLOR[0], OLD_TETRIS_COLOR[1], OLD_TETRIS_COLOR[2], 1);
 			Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
 			switch (game_state) {
 				case 0: render_gui();
 					break;
-				case 1:  render_game();
+				case 1:  render_game(true);
 					break;
 				case 2:  render_help();
 					break;
 				case 3: render_credits();
 					break;
-				case 4: render_gameover();
+				case 4:
+					render_game(false);
+					render_gameover();
 					break;
 				default:
-					render_game();
+					render_game(true);
 					break;
 			}
-		}
-		if (game_over_flag) {
-			game_over_background = ScreenUtils.getFrameBufferTexture();
-			game_over_flag = false;
-		}
-
 	}
 	
 	@Override
@@ -2442,5 +2447,51 @@ private void prev_tetr_rot() {
 		help.dispose();
 		gameover.dispose();
 		ingame.dispose();
+		explosion.dispose();
+
+		helpup.dispose();
+		helpdown.dispose();
+		mutesnd.dispose();
+		unmutesnd.dispose();
+		mutemusic.dispose();
+		unmutemusic.dispose();
+		loginup.dispose();
+		logindown.dispose();
+		ratemeup.dispose();
+		ratemedown.dispose();
+		donatebtc.dispose();
+		donateltc.dispose();
+		donateeth.dispose();
+		header.dispose();
+		protip.dispose();
+		newgame.dispose();
+
+		ball.dispose();
+		racket.dispose();
+		rack_control.dispose();
+
+		food.dispose();
+		head.dispose();
+		tail.dispose();
+		body.dispose();
+		anglebody.dispose();
+		snake_control.dispose();
+
+		tetrotile.dispose();
+		tetroborder.dispose();
+		tetr_move.dispose();
+		tetr_rot.dispose();
+
+		help_background.dispose();
+		help_overlay.dispose();
+		help_quit.dispose();
+
+		sharefb.dispose();
+		sharetw.dispose();
+		sharevk.dispose();
+		sharegh.dispose();
+		game_over_quit.dispose();
+
+		credits_quit.dispose();
 	}
 }
