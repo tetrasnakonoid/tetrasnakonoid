@@ -11,14 +11,11 @@ import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.scenes.scene2d.Event;
-import com.badlogic.gdx.scenes.scene2d.EventListener;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
@@ -30,16 +27,10 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.TimeUtils;
-import com.badlogic.gdx.utils.Timer;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
-import java.awt.Point;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.InputStreamReader;
 import java.util.LinkedList;
 import java.util.Random;
-import java.util.Vector;
 
 /* C is better for me than Java. Sorry for this mess. */
 /*    		 ---h---
@@ -128,7 +119,7 @@ class TetrasnakonoidGame
 	public static final int racket_length_tiles = 5;
 	Rect[] wall;
 	Racket pc, ai;
-	public static final int racket_speed_tiles_sec = 5;
+	public static final int racket_speed_tiles_sec = 7;
 	Ball ball, lulz_ball;
 	int difficulty_a;
 	public Color a_color;
@@ -168,6 +159,7 @@ class TetrasnakonoidGame
 public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationListener {
 	public static final boolean DEBUG = false;
 
+	public static final String self_name = "Tetransnakonoid 9000 PRO";
 	public static final int Answer = 42;
 	public static final String version = "v9000.1";
 	public static final String corporation = "One Man Company That Makes Everything";
@@ -260,9 +252,9 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private static final String twitterURI = "http://twitter.com";
 	private static final String vkURI = "http://vk.com";
 
-	private static final String donateBTCURI = "https://raw.githubusercontent.com/tetrasnakonoid/tetrasnakonoid/donations/donateBTC.html";
-	private static final String donateLTCURI = "https://raw.githubusercontent.com/tetrasnakonoid/tetrasnakonoid/donations/donateLTC.html";
-	private static final String donateETHURI = "https://raw.githubusercontent.com/tetrasnakonoid/tetrasnakonoid/donations/donateETH.html";
+	private static final String donateBTCURI = "https://tetrasnakonoid.github.io/tetrasnakonoid/donations/donateBTC.html";
+	private static final String donateLTCURI = "https://tetrasnakonoid.github.io/tetrasnakonoid/donations/donateLTC.html";
+	private static final String donateETHURI = "https://tetrasnakonoid.github.io/tetrasnakonoid/donations/donateETH.html";
 
 	private static final String ETHWallet = "0x7d3935e9b579a53B23d1BC14C23fdDafE9f3d522";
 	private static final String BTCWallet = "18gm58hZ7avF18tvhoQmEEkKFTeh2WANoG";
@@ -2444,9 +2436,11 @@ private void prev_tetr_rot() {
 		jingle.dispose();
 		high_score_jingle.dispose();
 		fail_jingle.dispose();
+
 		ui.dispose();
 		credits.dispose();
 		help.dispose();
 		gameover.dispose();
+		ingame.dispose();
 	}
 }
