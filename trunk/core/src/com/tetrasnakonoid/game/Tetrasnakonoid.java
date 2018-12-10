@@ -17,6 +17,7 @@ import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
@@ -33,136 +34,16 @@ import java.util.LinkedList;
 import java.util.Random;
 
 /* C is better for me than Java. Sorry for this mess. */
-/*    		 ---h---
-			|   |   |
-			w-(x,y)-w
-			|   |   |
-			 ---h---
-		(0,0)
-*/
-class PointT
-{
-	int x, y;
-	PointT(int xin, int yin) {
-		x = xin;
-		y = yin;
-		flag = 0;
-	}
-	int flag;
-}
 
-class Rect
-{
-	int x,y,h,w;
-}
-
-class Ball {
-	int x,y;
-	float vx,vy;
-	float dx,dy;
-	float v;
-	float angle;
-
-	long last_col;
-	int last_col_x;
-	int last_col_y;
-
-	public Ball () {	}
-	public Ball(Ball another) {
-		this.x = another.x;
-		this.y = another.y;
-		this.vx = another.vx;
-		this.vy = another.vy;
-		this.dx= another.vy;
-		this.dy = another.vy;
-		this.v = another.vy;
-		this.angle = another.vy;
-	}
-}
-
-class Racket {
-	float v;
-	Rect bb;
-	int target_y;
-}
-
-class PointF {
-	float x; float y;
-}
-
-class TetrasnakonoidUsernameDialog implements Input.TextInputListener {
-	@Override
-	public void input (String text) {
-		if (text.length() < 40)
-			username = text;
-		else
-			username = "kek";
-	}
-
-	@Override
-	public void canceled () {
-	}
-
-	public String username = "none";
-}
-
-class TetrasnakonoidGame
-{
-	public static final int max_width_tiles = 40;
-	public static final int max_height_tiles = 20;
-	public static final int sprite_tile_size_px = 64;
-	public int tile_size_px = 64;
-	public float k = 1.0f;
-	public int vp_h, vp_w;
-    public int vp_x, vp_y;
-
-	public static final int racket_length_tiles = 5;
-	Rect[] wall;
-	Racket pc, ai;
-	public static final int racket_speed_tiles_sec = 7;
-	Ball ball, lulz_ball;
-	int difficulty_a;
-	public Color a_color;
-	float rack_ai_acc;
-    boolean has_lulz_ball;
-    boolean pc_turn;
-
-	public static final int snake_init_length_tiles = 4;
-	public static final int snake_speed_tiles_per_sec = 5;
-	int s_length;
-	public static final int total_foods = 16;
-	int foodx, foody,food_id;
-	int headx, heady;
-	public LinkedList<Integer> snake_directions = new LinkedList<Integer>();
-	int difficulty_s;
-	Color s_color;
-	float snake_ani_acc;
-	float s_delta;
-	public int next_snake_dir = 0;
-
-	public static final int tetris_w_tiles = 10;
-	public static final int tetris_h_tiles = 20;
-	public static final int tetris_speed_tiles_per_sec = 5;
-	int[][] blocks;
-	int tetramino_type;
-	int tetramino_rot;
-	int tetramino_x;
-	int tetramino_y;
-	float tetris_ani_acc;
-
-	int difficulty_t;
-	Color t_color;
-	public static final int super_scores = 5;
-	int scores;
-
-}
 public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationListener {
 	public static final boolean DEBUG = false;
+	public static final String LOG_TAG = "TTS_DEBUG";
 
 	public static final String self_name = "Tetransnakonoid 9000 PRO";
 	public static final int Answer = 42;
 	public static final String version = "v9000.1";
 	public static final String corporation = "One Man Company That Makes Everything";
+	public static final String mailto = "admin@tetrasnakonoid.ru";
 
 	private ShapeRenderer shapeRenderer;
 
@@ -170,11 +51,13 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private ScreenViewport viewport;
 	private SpriteBatch batch;
 
-	private Texture helpup, helpdown, mutesnd, unmutesnd, mutemusic, unmutemusic, loginup, logindown, ratemeup, ratemedown, donatebtc, donateltc, donateeth, newgame;
-	private ImageButton btn_help, btn_mutesnd, btn_mutemusic, btn_login, btn_donate_btc, btn_donate_ltc, btn_donate_eth, btn_rateme, btn_new_game;
+	private Texture helpup, helpdown, mutesnd, unmutesnd, mutemusic, unmutemusic, loginup, logindown, ratemeup, ratemedown, donatebtc, donateltc, donateeth, donateusd, halloffame, hardcoreup, hardcoredown, newgame;
+	private ImageButton btn_help, btn_mutesnd, btn_mutemusic, btn_login, btn_donate_btc, btn_donate_ltc, btn_donate_eth, btn_donate_usd, btn_rateme, btn_halloffame, btn_hardcore, btn_new_game;
 	private Drawable drw_helpup, drw_helpdown, drw_mutesnd, drw_unmutesnd, drw_mutemusic, drw_unmutemusic, drw_loginup, drw_logindown,
-			drw_ratemeup, drw_ratemedown, drw_donate_btc, drw_donate_ltc, drw_donate_eth, drw_new_game;
+			drw_ratemeup, drw_ratemedown, drw_donate_btc, drw_donate_ltc, drw_donate_eth, drw_donate_usd, drw_hall_of_fame, drw_hardcoreup, drw_hardcoredown, drw_new_game;
 	private Label lbl_high_scores_out, lbl_last_try_out, lbl_version;
+
+	private ParticleEffect hardcorefire;
 
 	private Texture header, protip;
 	private Image img_header;
@@ -225,7 +108,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private ImageButton btn_help_quit;
 	private float help_fadeout = 1.0f;
 
-	TetrasnakonoidUsernameDialog ask_username;
+	private TetrasnakonoidUsernameDialog ask_username;
 
 	private Texture sharefb, sharetw, sharevk, sharegh, game_over_quit;
 	private TextureRegion game_over_background;
@@ -248,23 +131,28 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private static final float[] OLD_TETRIS_COLOR = {0.7529f, 0.8078f, 0.6352f};
 	private static final String motto = "protip: you can't";
 
-	private static final String ratemeURI = "http://play.google.com/store/apps/details?id=com.tetrasnakonoid.game";
+	private static final String selfURI = "https://tetrasnakonoid.ru/";
 
-	private static final String githubURI = "http://github.com/tetrasnakonoid/tetrasnakonoid";
-	private static final String facebookURI = "http://facebook.com";
-	private static final String twitterURI = "http://twitter.com";
-	private static final String vkURI = "http://vk.com";
+	private static final String ratemeURIAndroid = "https://play.google.com/store/apps/details?id=com.tetrasnakonoid.game";
+	private static final String ratemeURIApple = "";
+	private static final String ratemeURIOther = selfURI;
 
-	private static final String donateBTCURI = "https://tetrasnakonoid.github.io/tetrasnakonoid/donations/donateBTC.html";
-	private static final String donateLTCURI = "https://tetrasnakonoid.github.io/tetrasnakonoid/donations/donateLTC.html";
-	private static final String donateETHURI = "https://tetrasnakonoid.github.io/tetrasnakonoid/donations/donateETH.html";
+	private static final String githubURI = "https://github.com/tetrasnakonoid/tetrasnakonoid";
+	private static final String facebookURI = "https://facebook.com";
+	private static final String twitterURI = "https://twitter.com";
+	private static final String vkURI = "https://vk.com";
+
+	private static final String donateBTCURI = "https://tetrasnakonoid.ru/donate/btc";
+	private static final String donateLTCURI = "https://tetrasnakonoid.ru/donate/ltc";
+	private static final String donateETHURI = "https://tetrasnakonoid.ru/donate/eth";
+	private static final String donateUSDURI = "https://tetrasnakonoid.ru/donate/usd";
+	private static final String halloffameURI = "https://tetrasnakonoid.ru/backers/new";
 
 	private static final String ETHWallet = "ETH: 0x7d3935e9b579a53B23d1BC14C23fdDafE9f3d522";
 	private static final String BTCWallet = "BTC: 18gm58hZ7avF18tvhoQmEEkKFTeh2WANoG";
 	private static final String LTCWallet = "LTC: 3HR93M2JPvqBVQrbzETAArUZaq9hpDJfZQ";
 
 	private int game_state = 0;
-
 
 	private boolean sndmuted = false;
 	private boolean musicmuted = true;
@@ -303,9 +191,9 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 			g = 0.2f + rn.nextFloat() * (0.8f - 0.2f);
 			b = 0.2f + rn.nextFloat() * (0.8f - 0.2f);
 		}
-			while (((OLD_TETRIS_COLOR[0] - r) < 0.1f) &&
-					((OLD_TETRIS_COLOR[1] - g) < 0.1f) &&
-					((OLD_TETRIS_COLOR[2] - b) < 0.1f));
+			while (( Math.abs((OLD_TETRIS_COLOR[0] - r)) < 0.1f) &&
+					(Math.abs((OLD_TETRIS_COLOR[1] - g)) < 0.1f) &&
+					(Math.abs((OLD_TETRIS_COLOR[2] - b)) < 0.1f));
 
 		return new Color(r, g, b, 1);
 	}
@@ -868,11 +756,15 @@ private void prev_tetr_rot() {
 		if  (sndmuted) out2 +=String.valueOf(0); else out2 +=String.valueOf(1);
 		out2+="\n";
 		if  (musicmuted) out2 +=String.valueOf(0); else out2 +=String.valueOf(1);
+		out2+="\n";
+		if  (game.hardcore) out2 +=String.valueOf(1); else out2 +=String.valueOf(0);
+
 		config.writeString(out2,false);
 
 	}
 
 	private String get_random_quote(int scores) {
+		if (scores == Answer) {return "Answer: Tetrasnakonoid";}
 		int total_win_quotes = 10;
 		final String[] quotes = new String[total_win_quotes];
 		quotes[0] = "IDDQD";
@@ -893,12 +785,12 @@ private void prev_tetr_rot() {
 		newfag_quotes[2] = "Rank: Kitten";
 		newfag_quotes[3] = "Rank: Newbie";
 		newfag_quotes[4] = "Rank: Slowpoke";
-		newfag_quotes[5] = "Try harder";
-		newfag_quotes[6] = "No, John. You are the Tetrasnakonoid.";
+		newfag_quotes[5] = "Try Harder";
+		newfag_quotes[6] = "No, John. You are the Tetrasnakonoid";
 		newfag_quotes[7] = "AHAHAHAHAHAAHAHAH";
-		newfag_quotes[8] = "You Are Already Dead.";
-		newfag_quotes[9] = "All your base are belong to us.";
-		newfag_quotes[10] = "The Game.";
+		newfag_quotes[8] = "You Are Already Dead";
+		newfag_quotes[9] = "All Your Base Are Belong To Us";
+		newfag_quotes[10] = "The Game";
 
 		Random r = new Random();
 		if (scores>300) return quotes[r.nextInt(total_win_quotes)]; else return newfag_quotes[r.nextInt(total_newfag_quotes)];
@@ -1051,7 +943,7 @@ private void prev_tetr_rot() {
 		btn_game_over_back.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
-				if (TimeUtils.millis() - last_game_over_time > 1500) {
+				if (TimeUtils.millis() - last_game_over_time > 2000) {
 					first_try = false;
 					game_state = 0;
 					Gdx.input.setInputProcessor(ui);
@@ -1279,9 +1171,20 @@ private void prev_tetr_rot() {
 		drw_donate_eth = new TextureRegionDrawable(new TextureRegion(donateeth));
 		btn_donate_eth = new ImageButton(drw_donate_eth);
 
+		drw_donate_usd = new TextureRegionDrawable(new TextureRegion(donateusd));
+		btn_donate_usd = new ImageButton(drw_donate_usd);
+
+		drw_hall_of_fame = new TextureRegionDrawable(new TextureRegion(halloffame));
+		btn_halloffame = new ImageButton(drw_hall_of_fame);
+
 		drw_ratemeup = new TextureRegionDrawable(new TextureRegion(ratemeup));
 		drw_ratemedown = new TextureRegionDrawable(new TextureRegion(ratemedown));
 		btn_rateme = new ImageButton(drw_ratemeup, drw_ratemedown);
+
+		drw_hardcoreup = new TextureRegionDrawable(new TextureRegion(hardcoreup));
+		drw_hardcoredown = new TextureRegionDrawable(new TextureRegion(hardcoredown));
+		btn_hardcore = new ImageButton(drw_hardcoreup, drw_hardcoreup, drw_hardcoredown);
+		btn_hardcore.setChecked(game.hardcore);
 
 		drw_new_game = new TextureRegionDrawable(new TextureRegion(newgame));
 		btn_new_game = new ImageButton(drw_new_game);
@@ -1336,19 +1239,23 @@ private void prev_tetr_rot() {
 
 		layout = new Table();
 		layout.setFillParent(true);
-		layout.add(img_header).center().colspan(8).pad(10).spaceBottom(100);
+		layout.add(img_header).center().colspan(10).pad(10);
 		layout.row();
-		layout.add(lbl_high_scores_out).center().colspan(8).pad(10);
+		layout.add(lbl_high_scores_out).center().colspan(10).pad(30);
 		layout.row();
-		layout.add(lbl_last_try_out).center().colspan(8).pad(10).spaceBottom(100);
+		layout.add(lbl_last_try_out).center().colspan(10).pad(10);
+		layout.row();
+		layout.add(btn_hardcore).center().colspan(10).pad(30);
 		layout.row();
 		layout.add(btn_help).pad(10);
 		layout.add(btn_mutesnd).pad(10);
 		layout.add(btn_mutemusic).pad(10);
-		layout.add(btn_login).pad(10).spaceRight(300);
+		layout.add(btn_login).pad(10);
+		layout.add(btn_rateme).pad(10).spaceRight(300);
 
 
-		layout.add(btn_rateme).pad(10);
+		layout.add(btn_halloffame).pad(10);
+		layout.add(btn_donate_usd).pad(10);
 		layout.add(btn_donate_btc).pad(10);
 		layout.add(btn_donate_ltc).pad(10);
 		layout.add(btn_donate_eth).pad(10);
@@ -1360,6 +1267,10 @@ private void prev_tetr_rot() {
 		ui.addActor(layout);
 		ui.addActor(lbl_version);
 		Gdx.input.setInputProcessor(ui);
+
+		hardcorefire = new ParticleEffect();
+		hardcorefire.load(Gdx.files.internal("hardcore.particle"),Gdx.files.internal(""));
+		hardcorefire.scaleEffect(3.0f);
 
 		btn_help.addListener(new ClickListener() {
 			@Override
@@ -1420,12 +1331,33 @@ private void prev_tetr_rot() {
 			}
 		});
 
+		btn_donate_usd.addListener(new ClickListener() {
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+				Gdx.net.openURI(donateUSDURI);
+			}
+		});
+
+		btn_halloffame.addListener(new ClickListener() {
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+				Gdx.net.openURI(halloffameURI);
+			}
+		});
 
 		btn_rateme.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
-				Gdx.net.openURI(ratemeURI);
-
+				if(Gdx.app.getType() == Application.ApplicationType.iOS) {
+					Gdx.net.openURI(ratemeURIApple);
+				}
+				else if (Gdx.app.getType() == Application.ApplicationType.Android)
+				{
+					Gdx.net.openURI(ratemeURIAndroid);
+				}
+				else {
+					Gdx.net.openURI(ratemeURIOther);
+				}
 			}
 		});
 
@@ -1453,6 +1385,14 @@ private void prev_tetr_rot() {
 				new_game();
 			}
 		});
+		btn_hardcore.addListener(new ClickListener() {
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+				game.hardcore =!game.hardcore;
+				hardcorefire.getEmitters().first().setPosition(btn_hardcore.getX() + btn_hardcore.getWidth()/2, btn_hardcore.getY()+ btn_hardcore.getHeight()/2);
+			}
+		});
+
 	}
 
 	private void init_animations() {
@@ -1483,6 +1423,11 @@ private void prev_tetr_rot() {
 		donatebtc = new Texture(Gdx.files.internal("donatebtc.png"));
 		donateltc = new Texture(Gdx.files.internal("donateltc.png"));
 		donateeth = new Texture(Gdx.files.internal("donateeth.png"));
+		donateusd = new Texture(Gdx.files.internal("donateusd.png"));
+		halloffame = new Texture(Gdx.files.internal("halloffame.png"));
+		hardcoreup = new Texture(Gdx.files.internal("hardcoreup.png"));
+		hardcoredown = new Texture(Gdx.files.internal("hardcoredown.png"));
+
 		header = new Texture(Gdx.files.internal("header.png"));
 		protip = new Texture(Gdx.files.internal("motto.png"));
 		newgame = new Texture(Gdx.files.internal("newgame.png"));
@@ -1537,20 +1482,22 @@ private void prev_tetr_rot() {
 			player_name = out[0];
 			int sndm = Integer.parseInt(out[1]);
 			int mscm = Integer.parseInt(out[2]);
+			int hc = Integer.parseInt(out[3]);
 
 			if (sndm == 1) sndmuted = false; else sndmuted = true;
 			if (mscm == 1) musicmuted = false; else musicmuted = true;
+			if (hc == 1) game.hardcore = true; else game.hardcore = false;
 		}
 	}
 
 	@Override
 	public void create() {
-		if (DEBUG) Gdx.app.debug("Gdx version", com.badlogic.gdx.Version.VERSION);
+		if (DEBUG) Gdx.app.debug(LOG_TAG, "GDX ver: " + com.badlogic.gdx.Version.VERSION);
 		batch = new SpriteBatch();
 		init_textures();
 		init_music();
-		init_cookies();
 		game = new TetrasnakonoidGame();
+		init_cookies();
 		init_gui();
 		init_animations();
 	}
@@ -1561,11 +1508,19 @@ private void prev_tetr_rot() {
 			motto_x = 0;
 			motto_y = 60 + (float) Math.random() * (Gdx.graphics.getHeight() - 2 * 60);
 		}
-
-		ui.draw();
 		batch.begin();
+		if (game.hardcore) {
+			hardcorefire.getEmitters().first().setPosition(btn_hardcore.getX() + btn_hardcore.getWidth()/2, btn_hardcore.getY()+ btn_hardcore.getHeight()/2);
+			hardcorefire.update(Gdx.graphics.getDeltaTime());
+			hardcorefire.draw(batch);
+		}
 		batch.draw(spr_protip, (int) motto_x, (int) motto_y);
 		batch.end();
+
+		ui.draw();
+
+
+
 
 
 	}
@@ -2177,9 +2132,9 @@ private void prev_tetr_rot() {
 	private PointT index_to_snake_xy(int id)
 	{
 		PointT out = new PointT(game.headx,game.heady);
-
-		for (int i =0;i<id; ++i) {
-			switch (game.snake_directions.get(i+1)){
+		if (id == 0) return out;
+		for (int i =1;i<=id; ++i) {
+			switch (game.snake_directions.get(i)){
 				case 1:
 					if (out.y >= TetrasnakonoidGame.max_height_tiles) out.y = 0; else out.y++ ; break;
 				case 2:
@@ -2510,9 +2465,14 @@ private void prev_tetr_rot() {
 		donatebtc.dispose();
 		donateltc.dispose();
 		donateeth.dispose();
+		donateusd.dispose();
+		halloffame.dispose();
+		hardcoredown.dispose();
+		hardcoreup.dispose();
 		header.dispose();
 		protip.dispose();
 		newgame.dispose();
+		hardcorefire.dispose();
 
 		ball.dispose();
 		racket.dispose();
@@ -2542,4 +2502,130 @@ private void prev_tetr_rot() {
 
 		credits_quit.dispose();
 	}
+}
+
+/*    		 ---h---
+			|   |   |
+			w-(x,y)-w
+			|   |   |
+			 ---h---
+		(0,0)
+*/
+class PointT
+{
+	int x, y;
+	PointT(int xin, int yin) {
+		x = xin;
+		y = yin;
+		flag = 0;
+	}
+	int flag;
+}
+
+class Rect
+{
+	int x,y,h,w;
+}
+
+class Ball {
+	int x,y;
+	float vx,vy;
+	float dx,dy;
+	float v;
+	float angle;
+
+	long last_col;
+	int last_col_x;
+	int last_col_y;
+
+	public Ball () {	}
+	public Ball(Ball another) {
+		this.x = another.x;
+		this.y = another.y;
+		this.vx = another.vx;
+		this.vy = another.vy;
+		this.dx= another.vy;
+		this.dy = another.vy;
+		this.v = another.vy;
+		this.angle = another.vy;
+	}
+}
+
+class Racket {
+	float v;
+	Rect bb;
+	int target_y;
+}
+
+class PointF {
+	float x; float y;
+}
+
+class TetrasnakonoidUsernameDialog implements Input.TextInputListener {
+	@Override
+	public void input (String text) {
+		if (text.length() < 40)
+			username = text;
+		else
+			username = "kek";
+	}
+
+	@Override
+	public void canceled () {
+	}
+
+	public String username = "none";
+}
+class TetrasnakonoidGame
+{
+	/* Easy mode is for kids actually. Real men are HARDCORE ONLY or die trying.
+	*  Real men don't do vidya? Huh? Fuck off friendo. THIS IS TETRASNAKONOID!!1111 */
+	public boolean hardcore = false;
+
+	public static final int max_width_tiles = 40;
+	public static final int max_height_tiles = 20;
+	public static final int sprite_tile_size_px = 64;
+	public int tile_size_px = 64;
+	public float k = 1.0f;
+	public int vp_h, vp_w;
+	public int vp_x, vp_y;
+
+	public static final int racket_length_tiles = 5;
+	Rect[] wall;
+	Racket pc, ai;
+	public static final int racket_speed_tiles_sec = 7;
+	Ball ball, lulz_ball;
+	int difficulty_a;
+	public Color a_color;
+	float rack_ai_acc;
+	boolean has_lulz_ball;
+	boolean pc_turn;
+
+	public static final int snake_init_length_tiles = 4;
+	public static final int snake_speed_tiles_per_sec = 5;
+	int s_length;
+	public static final int total_foods = 16;
+	int foodx, foody,food_id;
+	int headx, heady;
+	public LinkedList<Integer> snake_directions = new LinkedList<Integer>();
+	int difficulty_s;
+	Color s_color;
+	float snake_ani_acc;
+	float s_delta;
+	public int next_snake_dir = 0;
+
+	public static final int tetris_w_tiles = 10;
+	public static final int tetris_h_tiles = 20;
+	public static final int tetris_speed_tiles_per_sec = 5;
+	int[][] blocks;
+	int tetramino_type;
+	int tetramino_rot;
+	int tetramino_x;
+	int tetramino_y;
+	float tetris_ani_acc;
+
+	int difficulty_t;
+	Color t_color;
+	public static final int super_scores = 5;
+	int scores;
 }
