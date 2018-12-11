@@ -1,3 +1,4 @@
+/*Ха-ха даже не спрашивайте что я курил, чтобы наговнокодить это. */
 package com.tetrasnakonoid.game;
 
 import com.badlogic.gdx.Application;
@@ -17,7 +18,6 @@ import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
@@ -43,11 +43,11 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	public static final int Answer = 42;
 	public static final String version = "v9000.1";
 	public static final String corporation = "One Man Company That Makes Everything";
-	public static final String mailto = "admin@tetrasnakonoid.ru";
+	public static final String mailto = "fuck@tetrasnakonoid.ru";
 
 	private ShapeRenderer shapeRenderer;
 
-	private Stage ui, ingame, help, gameover, credits;
+	private Stage ui, ingame, ingameeasy, help, gameover, credits;
 	private ScreenViewport viewport;
 	private SpriteBatch batch;
 
@@ -102,8 +102,12 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private Drawable drw_tetr_move, drw_tetr_rot;
 	private ImageButton btn_tetr_move, btn_tetr_rot;
 
-	private Texture help_background, help_overlay, help_quit;
-	private Sprite spr_help_background, spr_help_overlay;
+	private Texture gamepad_arrow, gamepad_rot;
+	private Drawable drw_gamepadup, drw_gamepaddown, drw_gamepadleft, drw_gamepadright,  drw_gamepadrot;
+	private ImageButton btn_gamepadup, btn_gamepaddown, btn_gamepadleft, btn_gamepadright, btn_gamepadrot;
+
+	private Texture help_background, help_overlay, easy_help_overlay, help_quit;
+	private Sprite spr_help_background, spr_help_overlay, spr_easy_help_overlay;
 	private Drawable drw_help_quit;
 	private ImageButton btn_help_quit;
 	private float help_fadeout = 1.0f;
@@ -131,7 +135,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private static final float[] OLD_TETRIS_COLOR = {0.7529f, 0.8078f, 0.6352f};
 	private static final String motto = "protip: you can't";
 
-	private static final String selfURI = "https://tetrasnakonoid.ru/";
+	private static final String selfURI = "https://tetrasnakonoid.ru";
 
 	private static final String ratemeURIAndroid = "https://play.google.com/store/apps/details?id=com.tetrasnakonoid.game";
 	private static final String ratemeURIApple = "";
@@ -161,8 +165,13 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private boolean has_high_scores = false;
 	private int high_score = 0;
 	private String top_player_name = "Anonymous";
+	private int high_score_easy = 0;
+	private String top_player_name_easy = "Anonymous";
+
 	private int last_score = 0;
 	private String last_player_name = "Anonymous";
+	private int last_score_easy = 0;
+	private String last_player_name_easy = "Anonymous";
 
 	private long last_render = 0;
 	private boolean game_over_flag = false;
@@ -224,6 +233,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		spr_pc_racket = new Sprite(racket, TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.racket_length_tiles * TetrasnakonoidGame.sprite_tile_size_px);
 		spr_pc_racket.setColor(game.a_color);
 		spr_pc_racket.setSize(1.5f*game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.racket_length_tiles * TetrasnakonoidGame.sprite_tile_size_px * game.k);
+		spr_pc_racket.setOriginCenter();
 
 		game.pc = new Racket();
 		game.pc.bb = new Rect();
@@ -246,6 +256,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		spr_ai_racket = new Sprite(racket, TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.racket_length_tiles * TetrasnakonoidGame.sprite_tile_size_px);
 		spr_ai_racket.setColor(game.a_color);
 		spr_ai_racket.setSize(1.5f*game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.racket_length_tiles * TetrasnakonoidGame.sprite_tile_size_px * game.k);
+		spr_ai_racket.setOriginCenter();
 
 		game.ai = new Racket();
 		game.ai.bb = new Rect();
@@ -254,7 +265,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		game.ai.bb.h = TetrasnakonoidGame.racket_length_tiles * game.tile_size_px / 2;
 		game.ai.bb.w = game.tile_size_px / 2;
 
-		game.ai.bb.x = game.vp_w - game.tile_size_px;
+		game.ai.bb.x = game.vp_w - 3*game.tile_size_px/2;
 
 		int max = game.vp_h - game.ai.bb.h;
 		int min = game.ai.bb.h;
@@ -330,6 +341,8 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		game.difficulty_a = 0;
 		init_pc_racket();
 		init_ai_racket();
+		Random r = new Random();
+		game.pc_pitcher = r.nextBoolean();
 		init_ball();
 
 	}
@@ -343,13 +356,13 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		y=h;
 		game.wall[0] = new Rect();
 		game.wall[0].x = x;
-		game.wall[0].y = 2*y;
+		game.wall[0].y = 2*y + game.tile_size_px/2;
 		game.wall[0].h = game.tile_size_px/2;
 		game.wall[0].w = w;
 
 		game.wall[1] = new Rect();
 		game.wall[1].x = x;
-		game.wall[1].y = 0;
+		game.wall[1].y = 0 - game.tile_size_px/2;
 		game.wall[1].h = game.tile_size_px/2;
 		game.wall[1].w = w;
 
@@ -369,9 +382,9 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private void next_food_xy()
 	{
 		Random r = new Random();
-		int width =(TetrasnakonoidGame.max_width_tiles - TetrasnakonoidGame.tetris_w_tiles)/2 - 2;
+		int width =(TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2 - 2;
 		int x = r.nextInt(width);
-		if (r.nextInt(2) == 1) game.foodx = 2 + x; else game.foodx = 2 + width + TetrasnakonoidGame.tetris_w_tiles + x;
+		if (r.nextInt(2) == 1) game.foodx = 2 + x; else game.foodx = 2 + width + game.tetris_w_tiles + x;
 		game.foody = r.nextInt(TetrasnakonoidGame.max_height_tiles);
 	}
 
@@ -385,6 +398,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	}
 
 	private void next_food() {
+		game.snake_hunger = 1.2f*game.vp_w;
 		do {next_food_xy();} while(food_in_snake());
 
 		Random r = new Random();
@@ -393,6 +407,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		spr_food.setRegion(TetrasnakonoidGame.sprite_tile_size_px*(game.food_id),0 , TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px);
 	}
 	private void init_snake(){
+		game.snake_hunger = 1.2f*game.vp_w;
 		game.difficulty_s = 0;
 		game.snake_ani_acc = 0;
 		game.s_delta = 0;
@@ -407,7 +422,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		spr_food = new Sprite(fr);
 
 		next_food_xy(); game.headx = game.foodx;
-		game.heady= r.nextInt((TetrasnakonoidGame.max_height_tiles - 0) + 1) + 0;
+		game.heady= r.nextInt(TetrasnakonoidGame.max_height_tiles);
 		next_food();
 
 		spr_food.setColor(game.s_color);
@@ -437,22 +452,22 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	}
 
 	private void tetramino_to_block() {
-		for (int i = 0;i < TetrasnakonoidGame.tetris_h_tiles + 4 ; ++i)
-			for (int j = 0; j < TetrasnakonoidGame.tetris_w_tiles ; ++j) {
+		for (int i = 0;i < game.tetris_h_tiles + 4 ; ++i)
+			for (int j = 0; j < game.tetris_w_tiles ; ++j) {
 				if (game.blocks[i][j] == 2) game.blocks[i][j] = 1;
 			}
 	}
 
 	private void clear_tetramino() {
-			for (int i = 0; i < TetrasnakonoidGame.tetris_h_tiles + 4; ++i)
-				for (int j = 0; j < TetrasnakonoidGame.tetris_w_tiles; ++j){
+			for (int i = 0; i < game.tetris_h_tiles + 4; ++i)
+				for (int j = 0; j < game.tetris_w_tiles; ++j){
 				if (game.blocks[i][j] == 2) game.blocks[i][j] = 0;
 			}
 	}
 
 	private void unput_tetramino() {
-		for (int i = 0; i < TetrasnakonoidGame.tetris_h_tiles + 4; ++i)
-			for (int j = 0; j < TetrasnakonoidGame.tetris_w_tiles; ++j){
+		for (int i = 0; i < game.tetris_h_tiles + 4; ++i)
+			for (int j = 0; j < game.tetris_w_tiles; ++j){
 				if ((game.blocks[i][j] == 2) || (game.blocks[i][j] ==3) || (game.blocks[i][j] ==4)) game.blocks[i][j] -= 2;
 			}
 	}
@@ -588,7 +603,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 						game.blocks[y][++x] += 2;
 					}
 					if (rot == 2)  {
-						game.blocks[y][x] += 2;
+						game.blocks[y][++x] += 2;
 						game.blocks[++y][x] += 2;
 						game.blocks[++y][x] += 2;
 						game.blocks[y][--x] += 2;
@@ -685,17 +700,17 @@ private void prev_tetr_rot() {
 			case 6: game.tetramino_rot = r.nextInt(4); break; /* reverse L */
 			default: break;
 		}
-		game.tetramino_y = TetrasnakonoidGame.tetris_h_tiles-1;
-		game.tetramino_x = (TetrasnakonoidGame.tetris_w_tiles - get_tetramino_width(game.tetramino_type, game.tetramino_rot))/2;
+		game.tetramino_y = game.tetris_h_tiles-1;
+		game.tetramino_x = (game.tetris_w_tiles - get_tetramino_width(game.tetramino_type, game.tetramino_rot))/2;
 		put_tetramino(game.tetramino_type, game.tetramino_rot, game.tetramino_x, game.tetramino_y);
 	}
 	   private void init_tetris(){
 		game.difficulty_t = 0;
 		game.tetris_ani_acc  = 0;
 
-		game.blocks = new int[TetrasnakonoidGame.tetris_h_tiles+4][TetrasnakonoidGame.tetris_w_tiles+4];
-		for (int i =0; i < TetrasnakonoidGame.tetris_h_tiles+4; ++i)
-			for(int j =0;j<TetrasnakonoidGame.tetris_w_tiles;++j){
+		game.blocks = new int[game.tetris_h_tiles+4][game.tetris_w_tiles+4];
+		for (int i =0; i < game.tetris_h_tiles+4; ++i)
+			for(int j =0;j<game.tetris_w_tiles;++j){
 					game.blocks[i][j]=0;
 			}
 		next_tetramino();
@@ -708,13 +723,13 @@ private void prev_tetr_rot() {
 		spr_tetroborderl = new Sprite(tetroborder);
 		spr_tetroborderl.setColor(game.t_color);
 		spr_tetroborderl.setSize(5, game.vp_h);
-		int lbx = (TetrasnakonoidGame.max_width_tiles - TetrasnakonoidGame.tetris_w_tiles)/2;
+		int lbx = (TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2;
 		spr_tetroborderl.setPosition(lbx* game.tile_size_px + game.vp_x, game.vp_y);
 
 		spr_tetroborderr = new Sprite(tetroborder);
 		spr_tetroborderr.setColor(game.t_color);
 		spr_tetroborderr.setSize(5, game.vp_h);
-		spr_tetroborderr.setPosition((lbx + TetrasnakonoidGame.tetris_w_tiles)  * game.tile_size_px + game.vp_x, game.vp_y);
+		spr_tetroborderr.setPosition((lbx + game.tetris_w_tiles)  * game.tile_size_px + game.vp_x, game.vp_y);
 
 	}
 
@@ -738,8 +753,23 @@ private void prev_tetr_rot() {
 			top_player_name = player_name;
 			high_score = game.scores;
 
-			out+="\n";
-			out+=String.valueOf(game.scores);
+			if (game.hardcore) {
+				out += "\n";
+				out += String.valueOf(game.scores);
+				out += "\n";
+				out += player_name;
+				out += "\n";
+				out += String.valueOf(game.scores);
+			}
+			else {
+				out += "\n";
+				out += String.valueOf(game.scores);
+				out += "\n";
+				out += player_name;
+				out += "\n";
+				out += String.valueOf(game.scores);
+			}
+
 			scores.writeString(out,false);
 
 			lbl = "TOP : ";
@@ -798,7 +828,7 @@ private void prev_tetr_rot() {
 
 
 	private void game_over(){
-		if (DEBUG) {new_game();}
+		if (DEBUG) { return; /*new_game();*/}
 
 		game_state = 4;
 		Gdx.input.setInputProcessor(gameover);
@@ -819,10 +849,28 @@ private void prev_tetr_rot() {
 		last_game_over_time = TimeUtils.millis();
 
 	}
+
+	private void recalc_tile_widths()
+	{
+		if (game.hardcore) {
+			game.snake_h_tiles = TetrasnakonoidGame.snake_h_tiles_hardcore;
+			game.snake_w_tiles = TetrasnakonoidGame.snake_w_tiles_hardcore;
+
+			game.tetris_h_tiles = TetrasnakonoidGame.tetris_h_tiles_hardcore;
+			game.tetris_w_tiles = TetrasnakonoidGame.tetris_w_tiles_hardcore;
+
+		}
+		else {
+			game.snake_h_tiles = TetrasnakonoidGame.snake_h_tiles_easy;
+			game.snake_w_tiles = TetrasnakonoidGame.snake_w_tiles_easy;
+
+			game.tetris_h_tiles = TetrasnakonoidGame.tetris_h_tiles_easy;
+			game.tetris_w_tiles = TetrasnakonoidGame.tetris_w_tiles_easy;
+		}
+	}
 	private void new_game() {
 		if (DEBUG) {
 			Gdx.app.setLogLevel(Application.LOG_DEBUG);
-			shapeRenderer = new ShapeRenderer();
 		}
 		if (first_try) game_state = 5; else game_state = 1;
 		game.scores = 0;
@@ -830,6 +878,7 @@ private void prev_tetr_rot() {
 
 		set_random_colors();
 		place_walls();
+		recalc_tile_widths();
 		init_arcanoid();
 		init_snake();
 		init_tetris();
@@ -837,13 +886,19 @@ private void prev_tetr_rot() {
 
 		game.lulz_ball = new Ball();
 		game.has_lulz_ball = false;
-		if (game_state == 1)
-			Gdx.input.setInputProcessor(ingame);
+		if (game_state == 1) {
+			if (game.hardcore)
+				Gdx.input.setInputProcessor(ingame);
+			else
+				Gdx.input.setInputProcessor(ingameeasy);
+		}
 		if (game_state == 5)
 			Gdx.input.setInputProcessor(null);
 
 		last_render = TimeUtils.millis();
 		last_new_game_time = last_render;
+
+		if (DEBUG) game_state = 1;
 	}
 
 	private void init_music() {
@@ -861,7 +916,10 @@ private void prev_tetr_rot() {
 		spr_help_background = new Sprite(help_background);
 		spr_help_background.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		spr_help_overlay = new Sprite(help_overlay);
-		spr_help_background.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+		spr_help_overlay.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
+		spr_easy_help_overlay = new Sprite(easy_help_overlay);
+		spr_easy_help_overlay.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
 		drw_help_quit = new TextureRegionDrawable(new TextureRegion(help_quit));
 
@@ -988,12 +1046,10 @@ private void prev_tetr_rot() {
 						"Totally Free and BSD 2-clause Open Source. No ADS.\n" +
 				              "Thanks to libGDX, Inkscape, Audacity, Paint .NET\n" +
 				         "And also any contributor which sprite sound or font was used\n" +
-		                 "Consider a small cryptocurrency beer donation\n" +
+		                 "Consider a small beer donation\n" +
 						 "So I can haz motivation to polish it further. See ya. \n" +
-						 "P.S. Wallets for donataions:\n" +
-						  BTCWallet + "\n" +
-				          LTCWallet + "\n" +
-				          ETHWallet;
+						 "P.S. Visit https://tetrasnakonoid.ru/donate for donations.\n" +
+						 "Use " +mailto + " for feedback.";
 
 		Label.LabelStyle credits_style = new Label.LabelStyle();
 		credits_style.font = scorefont;
@@ -1027,6 +1083,7 @@ private void prev_tetr_rot() {
 	private void init_ingame() {
 		ingame = new Stage(viewport);
 		detect_tile_size();
+		shapeRenderer = new ShapeRenderer();
 
 		drw_rack = new TextureRegionDrawable(new TextureRegion(rack_control));
 		btn_rack = new ImageButton(drw_rack);
@@ -1049,7 +1106,7 @@ private void prev_tetr_rot() {
 		drw_snake_ctll = new TextureRegionDrawable(new TextureRegion(snake_control));
 		btn_snakel = new ImageButton(drw_snake_ctll);
 		btn_snakel.setPosition(game.vp_x + game.tile_size_px*2,0);
-		int scw = (game.vp_w - game.tile_size_px*4 - game.tile_size_px*TetrasnakonoidGame.tetris_w_tiles)/2;
+		int scw = (game.vp_w - game.tile_size_px*4 - game.tile_size_px*game.tetris_w_tiles)/2;
 		btn_snakel.setSize(scw, Gdx.graphics.getHeight());
 
 		btn_snakel.addListener(new ClickListener() {
@@ -1076,7 +1133,7 @@ private void prev_tetr_rot() {
 
 		drw_snake_ctlr = new TextureRegionDrawable(new TextureRegion(snake_control));
 		btn_snaker = new ImageButton(drw_snake_ctlr);
-		btn_snaker.setPosition(game.vp_x + game.tile_size_px*2+scw+ game.tile_size_px*TetrasnakonoidGame.tetris_w_tiles,0);
+		btn_snaker.setPosition(game.vp_x + game.tile_size_px*2+scw+ game.tile_size_px*game.tetris_w_tiles,0);
 		btn_snaker.setSize(scw, Gdx.graphics.getHeight());
 		btn_snaker.addListener(new ClickListener() {
 			@Override
@@ -1090,7 +1147,7 @@ private void prev_tetr_rot() {
 				}
 				else {
 					int width = get_tetramino_width(game.tetramino_type, game.tetramino_rot);
-					if (width + game.tetramino_x > TetrasnakonoidGame.tetris_w_tiles - 1) return;
+					if (width + game.tetramino_x > game.tetris_w_tiles - 1) return;
 
 					boolean flag = check_tetramino_move(false);
 					if ((flag))
@@ -1100,11 +1157,11 @@ private void prev_tetr_rot() {
 			}
 		});
 
-		int lbx = (TetrasnakonoidGame.max_width_tiles - TetrasnakonoidGame.tetris_w_tiles)/2;
+		int lbx = (TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2;
 		drw_tetr_move = new TextureRegionDrawable(new TextureRegion(tetr_move));
 		btn_tetr_move = new ImageButton(drw_tetr_move);
 		btn_tetr_move.setPosition(lbx* game.tile_size_px + game.vp_x,0);
-		btn_tetr_move.setSize(TetrasnakonoidGame.tetris_w_tiles*game.tile_size_px, Gdx.graphics.getHeight());
+		btn_tetr_move.setSize(game.tetris_w_tiles*game.tile_size_px, Gdx.graphics.getHeight());
 		btn_tetr_move.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
@@ -1130,15 +1187,98 @@ private void prev_tetr_rot() {
 		btn_tetr_rot.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
+
 				if (check_tetramino_rot()) next_tetr_rot();
 			}});
 
+		int gpx = TetrasnakonoidGame.max_width_tiles*game.tile_size_px - (3+3+1)*game.tile_size_px;
+		int gpy = game.tile_size_px*(1+3);
+		drw_gamepadup = new TextureRegionDrawable(new TextureRegion(gamepad_arrow));
+		btn_gamepadup = new ImageButton(drw_gamepadup);
+		btn_gamepadup.setSize(game.tile_size_px*3, game.tile_size_px*3);
+        btn_gamepadup.setPosition(gpx, gpy + game.tile_size_px*3/2);
+        btn_gamepadup.setOrigin(game.tile_size_px*3/2);
+		btn_gamepadup.setTransform(true);
+		btn_gamepadup.setRotation(+90f);
+
+		drw_gamepaddown = new TextureRegionDrawable(new TextureRegion(gamepad_arrow));
+		btn_gamepaddown = new ImageButton(drw_gamepaddown);
+		btn_gamepaddown.setSize(game.tile_size_px*3, game.tile_size_px*3);
+        btn_gamepaddown.setPosition(gpx, gpy - game.tile_size_px*3/2);
+		btn_gamepaddown.setOrigin(game.tile_size_px*3/2);
+		btn_gamepaddown.setTransform(true);
+		btn_gamepaddown.setRotation(-90f);
+
+		drw_gamepadleft = new TextureRegionDrawable(new TextureRegion(gamepad_arrow));
+		btn_gamepadleft = new ImageButton(drw_gamepadleft);
+		btn_gamepadleft.setSize(game.tile_size_px*3, game.tile_size_px*3);
+        btn_gamepadleft.setPosition(gpx - game.tile_size_px*3/2, gpy);
+		btn_gamepadleft.setOrigin(game.tile_size_px*3/2);
+		btn_gamepadleft.setTransform(true);
+		btn_gamepadleft.setRotation(180f);
+
+		drw_gamepadright = new TextureRegionDrawable(new TextureRegion(gamepad_arrow));
+		btn_gamepadright = new ImageButton(drw_gamepadright);
+		btn_gamepadright.setSize(game.tile_size_px*3, game.tile_size_px*3);
+        btn_gamepadright.setPosition(gpx + game.tile_size_px*3/2, gpy);
+		btn_gamepadright.setOrigin(game.tile_size_px*3/2);
+		btn_gamepadright.setTransform(true);
+		btn_gamepadright.setRotation(0f);
+
+		drw_gamepadrot = new TextureRegionDrawable(new TextureRegion(gamepad_rot));
+		btn_gamepadrot = new ImageButton(drw_gamepadrot);
+		btn_gamepadrot.setRotation(0f);
+		btn_gamepadrot.setSize(game.tile_size_px*5, game.tile_size_px*5);
+		btn_gamepadrot.setPosition(game.tile_size_px*2, gpy + game.tile_size_px*3/2 - game.tile_size_px*5/2);
+
+
+		btn_gamepadup.addListener(new ClickListener() {
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+
+			}
+		});
+
+		btn_gamepaddown.addListener(new ClickListener() {
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+
+			}
+		});
+
+		btn_gamepadleft.addListener(new ClickListener() {
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+
+			}
+		});
+
+		btn_gamepadright.addListener(new ClickListener() {
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+
+			}
+		});
+
+		btn_gamepadrot.addListener(new ClickListener() {
+			@Override
+			public void clicked(InputEvent event, float x, float y) {
+
+			}
+		});
+
 		ingame.addActor(btn_snakel);
 		ingame.addActor(btn_snaker);
-
 		ingame.addActor(btn_tetr_move);
 		ingame.addActor(btn_tetr_rot);
 		ingame.addActor(btn_rack);
+
+		ingameeasy = new Stage(viewport);
+		ingameeasy.addActor(btn_gamepadup);
+		ingameeasy.addActor(btn_gamepaddown);
+		ingameeasy.addActor(btn_gamepadleft);
+		ingameeasy.addActor(btn_gamepadright);
+		ingameeasy.addActor(btn_gamepadrot);
 	}
 
 	private void init_gui() {
@@ -1203,7 +1343,7 @@ private void prev_tetr_rot() {
 		score_style.fontColor = Color.BLACK;
 
 
-		String lbl ="TOP : ";
+		String lbl ="TOP: ";
 		if (has_high_scores) {
 			lbl += top_player_name;
 			lbl += " ";
@@ -1277,6 +1417,7 @@ private void prev_tetr_rot() {
 			public void clicked(InputEvent event, float x, float y) {
 				game_state = 2;
 				spr_help_overlay.setAlpha(1.0f);
+				spr_easy_help_overlay.setAlpha(1.0f);
 				Gdx.input.setInputProcessor(help);
 			}
 		});
@@ -1448,8 +1589,12 @@ private void prev_tetr_rot() {
 		tetr_move  = new Texture("tetr_move.png");
 		tetr_rot = new Texture("tetr_rot.png");
 
+		gamepad_arrow = new Texture(Gdx.files.internal("gamepad_arrow.png"));
+		gamepad_rot = new Texture(Gdx.files.internal("gamepad_rot.png"));
+
 		help_background = new Texture("help_background.png");
 		help_overlay = new Texture("help_overlay.png");
+		easy_help_overlay = new Texture("easy_help_overlay.png");
 		help_quit = new Texture("help_quit.png");
 
 		sharefb = new Texture("sharefb.png");
@@ -1472,6 +1617,8 @@ private void prev_tetr_rot() {
 
 			top_player_name = out[0];
 			high_score = Integer.parseInt(out[1]);
+			top_player_name_easy = out[2];
+			high_score_easy = Integer.parseInt(out[3]);
 
 			has_high_scores = true;
 		}
@@ -1787,7 +1934,7 @@ private void prev_tetr_rot() {
 	}
     private Rect block_to_rect(int x, int y) {
         Rect r = new Rect();
-        int tw = (TetrasnakonoidGame.max_width_tiles - TetrasnakonoidGame.tetris_w_tiles)/2;
+        int tw = (TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2;
         r.x = (x+ tw)*game.tile_size_px + game.tile_size_px / 2 ;
         r.y = y*game.tile_size_px + game.tile_size_px / 2;
         r.h = game.tile_size_px / 2;
@@ -1855,8 +2002,8 @@ private void prev_tetr_rot() {
 			}
 		}
 
-		for (int i =0; i< TetrasnakonoidGame.tetris_h_tiles;++i) {
-			for (int j = 0; j< TetrasnakonoidGame.tetris_w_tiles;++j) {
+		for (int i =0; i< game.tetris_h_tiles;++i) {
+			for (int j = 0; j< game.tetris_w_tiles;++j) {
 				if (has_block(i,j)) {
 					if (rect_circle(block_to_rect(j, i), ball_to_rect(game.ball))) {
 						reflect_ball(game.ball, block_to_rect(j,i));
@@ -1883,7 +2030,7 @@ private void prev_tetr_rot() {
 	private PointT snake_to_tetris(PointT in) {
 		PointT out = new PointT(0,0);
 		out.y = in.y;
-		out.x = in.x - (TetrasnakonoidGame.max_width_tiles - TetrasnakonoidGame.tetris_w_tiles)/2;
+		out.x = in.x - (TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2;
 		return out;
 	}
 	private void snake_to_block()
@@ -1891,6 +2038,7 @@ private void prev_tetr_rot() {
 		PointT p;
 		for (int i = 0; i<4; i++) {
 			p = snake_to_tetris(index_to_snake_xy(i));
+			if ((p.x) >= 0 && (p.x<game.tetris_w_tiles))
 			game.blocks[p.y][p.x] = 1;
 		}
 	}
@@ -1906,7 +2054,7 @@ private void prev_tetr_rot() {
 						clear_tetramino();
 						next_tetramino();
 						game.scores += TetrasnakonoidGame.super_scores; jingle_jingle();
-						game.s_length--; if (game.s_length <= TetrasnakonoidGame.snake_init_length_tiles) {snake_to_block(); game_over();}
+						game.s_length--; game.snake_directions.removeLast(); if (game.s_length <= TetrasnakonoidGame.snake_init_length_tiles) {snake_to_block(); game_over();}
 					}
 				}
 			}
@@ -1930,8 +2078,8 @@ private void prev_tetr_rot() {
 			}
 		}
 
-		for (int i =0; i< TetrasnakonoidGame.tetris_h_tiles;++i) {
-			for (int j=0; j<TetrasnakonoidGame.tetris_w_tiles;++j) {
+		for (int i =0; i< game.tetris_h_tiles;++i) {
+			for (int j=0; j<game.tetris_w_tiles;++j) {
 				if (game.blocks[i][j] == 1) {
 					if (rect_rect(snake_to_rect(game.headx, game.heady), block_to_rect(j, i))) {
 						game_over();
@@ -1951,6 +2099,14 @@ private void prev_tetr_rot() {
 		if (rect_rect(snake_to_rect(game.foodx, game.foody), ball_to_rect(game.ball))){
 		    next_lulz_ball();
         }
+
+        if (game.snake_hunger < game.tile_size_px) {
+			game.s_length--;
+			game.snake_directions.removeLast();
+			if (game.s_length <= TetrasnakonoidGame.snake_init_length_tiles) {
+				game_over();
+			}
+		}
 	}
 	private void recalc_game_difficulty()
 	{
@@ -1962,8 +2118,10 @@ private void prev_tetr_rot() {
 	private void animate_snake(){
 		game.snake_ani_acc+=Gdx.graphics.getDeltaTime();
 		int speed = TetrasnakonoidGame.snake_speed_tiles_per_sec + game.difficulty_s;
+		game.snake_hunger-=2*game.tile_size_px*(1+game.difficulty_s)*Gdx.graphics.getDeltaTime();
 		if (game.snake_ani_acc > 1/(float)speed) {
 			recalc_game_difficulty();
+
 			check_snake_collisions();
 			if (game.next_snake_dir > 0) {
 				game.snake_directions.set(0,game.next_snake_dir);
@@ -1974,14 +2132,14 @@ private void prev_tetr_rot() {
 			switch (e)
 			{
 				case 1:
-					 if (game.heady <= 0) game.heady = TetrasnakonoidGame.max_height_tiles; else game.heady--; break;
+					 if (game.heady <= 0) game.heady = TetrasnakonoidGame.max_height_tiles - 1; else game.heady--; break;
 				case 2:
-					 if (game.heady >= TetrasnakonoidGame.max_height_tiles) game.heady = 0; else 	game.heady++; break;
+					 if (game.heady >= TetrasnakonoidGame.max_height_tiles-1) game.heady = 0; else 	game.heady++; break;
 				case 3:
-					 if (game.headx <= 0) game.headx = TetrasnakonoidGame.max_width_tiles; else game.headx--;
+					 if (game.headx <= 0) game.headx = TetrasnakonoidGame.max_width_tiles - 1; else game.headx--;
 					break;
 				case 4:
-					 if (game.headx >= TetrasnakonoidGame.max_width_tiles) game.headx = 0; else  game.headx++;
+					 if (game.headx >= TetrasnakonoidGame.max_width_tiles-1) game.headx = 0; else  game.headx++;
 					break;
 				default:
 					break;
@@ -2136,14 +2294,14 @@ private void prev_tetr_rot() {
 		for (int i =1;i<=id; ++i) {
 			switch (game.snake_directions.get(i)){
 				case 1:
-					if (out.y >= TetrasnakonoidGame.max_height_tiles) out.y = 0; else out.y++ ; break;
+					if (out.y >= TetrasnakonoidGame.max_height_tiles - 1) out.y = 0; else out.y++ ; break;
 				case 2:
-					if (out.y <= 0) out.y = TetrasnakonoidGame.max_height_tiles; else out.y--; break;
+					if (out.y <= 0) out.y = TetrasnakonoidGame.max_height_tiles - 1; else out.y--; break;
 				case 3:
-					if (out.x >= TetrasnakonoidGame.max_width_tiles) out.x = 0; else out.x++;
+					if (out.x >= TetrasnakonoidGame.max_width_tiles - 1) out.x = 0; else out.x++;
 					break;
 				case 4:
-					if (out.x <= 0 ) out.x =TetrasnakonoidGame.max_width_tiles; else out.x--;
+					if (out.x <= 0 ) out.x =TetrasnakonoidGame.max_width_tiles - 1; else out.x--;
 					break;
 				default:
 					break;
@@ -2195,6 +2353,7 @@ private void prev_tetr_rot() {
 
 	private boolean check_tetramino_rot(){
 		next_tetr_rot();
+		if (get_tetramino_width(game.tetramino_type,game.tetramino_rot) + game.tetramino_x > game.tetris_w_tiles) {prev_tetr_rot(); return false;}
 		clear_tetramino();
 		put_tetramino(game.tetramino_type, game.tetramino_rot, game.tetramino_x, game.tetramino_y);
 		boolean flag = check_tetramino();
@@ -2210,8 +2369,8 @@ private void prev_tetr_rot() {
 
 
 	private boolean check_tetramino(){
-		for (int i = 0; i < TetrasnakonoidGame.tetris_h_tiles; ++i ) {
-			for (int j = 0; j < TetrasnakonoidGame.tetris_w_tiles; ++j ){
+		for (int i = 0; i < game.tetris_h_tiles; ++i ) {
+			for (int j = 0; j < game.tetris_w_tiles; ++j ){
 				if (game.blocks[i][j] == 3) {
 					return true;
 				}
@@ -2223,7 +2382,7 @@ private void prev_tetr_rot() {
 	private boolean check_line(int id)
 	{
 		boolean flag = true;
-		for (int i =0; i<TetrasnakonoidGame.tetris_w_tiles;++i) {
+		for (int i =0; i<game.tetris_w_tiles;++i) {
 			if (game.blocks[id][i] == 0) { flag = false; return flag; }
 		}
 		return flag;
@@ -2232,16 +2391,16 @@ private void prev_tetr_rot() {
 	{
 		boolean flag = true;
 		int lineid = 0;
-		for (int i=0;i< TetrasnakonoidGame.tetris_h_tiles;++i) {
+		for (int i=0;i< game.tetris_h_tiles;++i) {
 			flag = check_line(i);
 			if (flag) {lineid = i; break;}
 		}
 		if (flag) {
-			for (int i =0; i<TetrasnakonoidGame.tetris_w_tiles;++i) {
+			for (int i =0; i<game.tetris_w_tiles;++i) {
 				game.blocks[lineid][i] = 0;
 			}
-			for (int i =lineid; i<TetrasnakonoidGame.tetris_h_tiles-1;++i) {
-				for (int j = 0; j < TetrasnakonoidGame.tetris_w_tiles; ++j) {
+			for (int i =lineid; i<game.tetris_h_tiles-1;++i) {
+				for (int j = 0; j < game.tetris_w_tiles; ++j) {
 						game.blocks[i][j] = game.blocks[i+1][j];
 				}
 			}
@@ -2251,7 +2410,7 @@ private void prev_tetr_rot() {
 	}
 	private void animate_tetris(){
 		game.tetris_ani_acc+=Gdx.graphics.getDeltaTime();
-		int speed = TetrasnakonoidGame.tetris_speed_tiles_per_sec + game.difficulty_t;
+		int speed = game.tetris_speed_tiles_per_sec + game.difficulty_t;
 		if (game.tetris_ani_acc > 1/(float) speed) {
 
 			game.tetramino_y--;
@@ -2271,8 +2430,8 @@ private void prev_tetr_rot() {
 			if (game.tetramino_y == 0) {tetramino_to_block(); while(clear_lines()){;} next_tetramino(); game.scores++; jingle_jingle();}
 
 
-			for (int i =0;i<TetrasnakonoidGame.tetris_w_tiles; ++i) {
-				if (game.blocks[TetrasnakonoidGame.tetris_h_tiles][i] == 1) game_over();
+			for (int i =0;i<game.tetris_w_tiles; ++i) {
+				if (game.blocks[game.tetris_h_tiles][i] == 1) game_over();
 			}
 
 			game.tetris_ani_acc = 0.0f;
@@ -2295,6 +2454,19 @@ private void prev_tetr_rot() {
 			shapeRenderer.rect(game.vp_x, game.vp_y,  game.vp_w, game.vp_h);
 			shapeRenderer.end();
 		}
+
+		if ((!game.hardcore) && (logic))
+		ingameeasy.draw();
+
+		Gdx.gl.glLineWidth(5);
+		shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+		shapeRenderer.setColor(game.s_color);
+		shapeRenderer.rect(game.vp_x, game.vp_y,  game.vp_w, game.vp_h);
+
+		shapeRenderer.circle(spr_food.getX() + spr_food.getWidth()/2, spr_food.getY() + spr_food.getHeight()/2, game.snake_hunger);
+
+		shapeRenderer.end();
+		Gdx.gl.glLineWidth(1);
 		if (logic) {
 			rack_ai();
 			coll_resolve();
@@ -2310,19 +2482,23 @@ private void prev_tetr_rot() {
 			if (help_fadeout>0) {
 				update_sprites();
 				spr_help_overlay.setAlpha(help_fadeout);
+				spr_easy_help_overlay.setAlpha(help_fadeout);
 				help_fadeout -= 0.2*Gdx.graphics.getDeltaTime();
 			}
 			else {
-				if (only_once) { Gdx.input.setInputProcessor(ingame); game_state = 1; only_once = false; }
+				if (only_once) { if (game.hardcore) Gdx.input.setInputProcessor(ingame); else Gdx.input.setInputProcessor(ingameeasy);  game_state = 1; only_once = false; }
 			}
 		}
 
 		batch.begin();
+		spr_tetroborderl.draw(batch);
+		spr_tetroborderr.draw(batch);
 		spr_pc_racket.draw(batch);
 		spr_ai_racket.draw(batch);
 	    spr_ball.draw(batch);
         if (game.has_lulz_ball) spr_lulz_ball.draw(batch);
-	    PointF p;
+
+		PointF p;
 		PointT p2;
 			for (int i = 0; i < game.s_length; ++i) {
 				if (i == 0) {
@@ -2362,21 +2538,20 @@ private void prev_tetr_rot() {
 			spr_food.setPosition(p.x, p.y);
 			spr_food.draw(batch);
 
-		for (int i = 0; i < TetrasnakonoidGame.tetris_h_tiles; ++i)
-			for (int j = 0; j < TetrasnakonoidGame.tetris_w_tiles; ++j){
+		for (int i = 0; i < game.tetris_h_tiles; ++i)
+			for (int j = 0; j < game.tetris_w_tiles; ++j){
 				if ((game.blocks[i][j] == 1) || (game.blocks[i][j] == 2)) {
 					p = block_index_to_sprite(i,j);
 					spr_tetrotile.setPosition(p.x, p.y);
 					spr_tetrotile.draw(batch);
 				}
 		}
-		spr_tetroborderl.draw(batch);
-		spr_tetroborderr.draw(batch);
-		if ((first_try) && (help_fadeout>0)) {spr_help_overlay.draw(batch);}
+		if ((first_try) && (help_fadeout>0)) { if (game.hardcore) spr_help_overlay.draw(batch); else spr_easy_help_overlay.draw(batch); }
 	    batch.end();
 
+		if (game.hardcore)
+			ingame.draw();
 
-		ingame.draw();
 
 		last_render = TimeUtils.millis();
 
@@ -2384,7 +2559,10 @@ private void prev_tetr_rot() {
 	private  void render_help() {
 		batch.begin();
 		spr_help_background.draw(batch);
-		spr_help_overlay.draw(batch);
+		if (game.hardcore)
+			spr_help_overlay.draw(batch);
+		else
+			spr_easy_help_overlay.draw(batch);
 		batch.end();
 		help.draw();
 	}
@@ -2492,6 +2670,7 @@ private void prev_tetr_rot() {
 
 		help_background.dispose();
 		help_overlay.dispose();
+		easy_help_overlay.dispose();
 		help_quit.dispose();
 
 		sharefb.dispose();
@@ -2600,6 +2779,14 @@ class TetrasnakonoidGame
 	float rack_ai_acc;
 	boolean has_lulz_ball;
 	boolean pc_turn;
+	boolean pc_pitcher;
+
+	public static final int snake_w_tiles_easy = 18;
+	public static final int snake_h_tiles_easy = max_height_tiles;
+	public static final int snake_w_tiles_hardcore = max_width_tiles;
+	public static final int snake_h_tiles_hardcore = max_height_tiles;
+	public int snake_w_tiles = 10;
+	public int snake_h_tiles = 20;
 
 	public static final int snake_init_length_tiles = 4;
 	public static final int snake_speed_tiles_per_sec = 5;
@@ -2613,10 +2800,16 @@ class TetrasnakonoidGame
 	float snake_ani_acc;
 	float s_delta;
 	public int next_snake_dir = 0;
+	public float snake_hunger = 1920;
 
-	public static final int tetris_w_tiles = 10;
-	public static final int tetris_h_tiles = 20;
-	public static final int tetris_speed_tiles_per_sec = 5;
+	public static final int tetris_w_tiles_easy = 18;
+	public static final int tetris_h_tiles_easy = 20;
+	public static final int tetris_w_tiles_hardcore = 10;
+	public static final int tetris_h_tiles_hardcore = 20;
+
+	public int tetris_w_tiles = 10;
+	public int tetris_h_tiles = 20;
+	public int tetris_speed_tiles_per_sec = 5;
 	int[][] blocks;
 	int tetramino_type;
 	int tetramino_rot;
