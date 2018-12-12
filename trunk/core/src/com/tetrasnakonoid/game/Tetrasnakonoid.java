@@ -181,6 +181,8 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private long last_new_game_time = 0;
 	private boolean only_once = true;
 
+	public long desktop_state_timeout = 0;
+
 	private float
 	todeg(float src) {
 		float pi = (float) Math.PI;
@@ -1637,6 +1639,7 @@ private void prev_tetr_rot() {
 		btn_help.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
+
 				game_state = 2;
 				spr_help_overlay.setAlpha(1.0f);
 				spr_easy_help_overlay.setAlpha(1.0f);
@@ -1888,6 +1891,11 @@ private void prev_tetr_rot() {
 	@Override
 	public void create() {
 		if (DEBUG) Gdx.app.debug(LOG_TAG, "GDX ver: " + com.badlogic.gdx.Version.VERSION);
+
+		if ((!Gdx.app.getType().equals(Application.ApplicationType.Android)) ||
+		(!Gdx.app.getType().equals(Application.ApplicationType.iOS))) {
+			Gdx.graphics.setWindowedMode(Gdx.graphics.getDisplayMode().width,Gdx.graphics.getDisplayMode().height);
+		}
 		batch = new SpriteBatch();
 		init_textures();
 		init_music();
@@ -2565,6 +2573,7 @@ private void prev_tetr_rot() {
 	private void animate_snake(){
 		game.snake_ani_acc+=Gdx.graphics.getDeltaTime();
 		int speed = TetrasnakonoidGame.snake_speed_tiles_per_sec + game.difficulty_s;
+
 		game.snake_hunger-=2*game.tile_size_px*(1+game.difficulty_s)*Gdx.graphics.getDeltaTime();
 		if (game.snake_ani_acc > 1/(float)speed) {
 			recalc_game_difficulty();
@@ -3054,6 +3063,11 @@ private void prev_tetr_rot() {
 	private void handlekbdinput() {
 		if (Gdx.app.getType() == Application.ApplicationType.iOS) return;
 		if (Gdx.app.getType() == Application.ApplicationType.Android) return;
+
+		int speed = game.tetris_speed_tiles_per_sec + game.difficulty_t;
+		boolean tflag = false;
+
+		if (game.tetris_ani_acc == 0) tflag = true;
 		if(Gdx.input.isKeyPressed(Input.Keys.W)){
 			if (game.hardcore) {
 				int orientation = game.snake_directions.getFirst();
@@ -3091,28 +3105,6 @@ private void prev_tetr_rot() {
 			else {
 				if (game.easy_mode_state <=1) {
 					int orientation = game.snake_directions.getFirst();
-					if ((orientation == 1) || (orientation == 2)) {
-						game.next_snake_dir = 3;
-					}
-				}
-				if (game.easy_mode_state==2) {
-					if (game.tetramino_x == 0) return;
-					boolean left = true;
-					boolean flag = check_tetramino_move(left);
-					if (flag) game.tetramino_x--;
-				}
-			}
-		}
-		if(Gdx.input.isKeyPressed(Input.Keys.A)){
-			if (game.hardcore) {
-				int orientation = game.snake_directions.getFirst();
-				if ((orientation == 1) || (orientation == 2)) {
-					game.next_snake_dir = 3;
-				}
-			}
-			else {
-				if (game.easy_mode_state <=1) {
-					int orientation = game.snake_directions.getFirst();
 					if ((orientation == 3) || (orientation == 4)) {
 						game.next_snake_dir = 1;
 					}
@@ -3126,6 +3118,29 @@ private void prev_tetr_rot() {
 					else {
 						game.pc.target_y = min;
 					}
+				}
+
+			}
+		}
+		if(Gdx.input.isKeyPressed(Input.Keys.A)){
+			if (game.hardcore) {
+				int orientation = game.snake_directions.getFirst();
+				if ((orientation == 1) || (orientation == 2)) {
+					game.next_snake_dir = 3;
+				}
+			}
+			else {
+				if (game.easy_mode_state <=1) {
+					int orientation = game.snake_directions.getFirst();
+					if ((orientation == 1) || (orientation == 2)) {
+						game.next_snake_dir = 3;
+					}
+				}
+				if (game.easy_mode_state==2 && tflag) {
+					if (game.tetramino_x == 0) return;
+					boolean left = true;
+					boolean flag = check_tetramino_move(left);
+					if (flag) game.tetramino_x--;
 				}
 			}
 		}
@@ -3145,7 +3160,7 @@ private void prev_tetr_rot() {
 					}
 				}
 
-				if (game.easy_mode_state==2) {
+				if (game.easy_mode_state==2 && tflag) {
 					int width = get_tetramino_width(game.tetramino_type, game.tetramino_rot);
 					if (width + game.tetramino_x > game.tetris_w_tiles - 1) return;
 
@@ -3156,7 +3171,7 @@ private void prev_tetr_rot() {
 			}
 		}
 		if(Gdx.input.isKeyPressed(Input.Keys.Q)){
-			if (game.hardcore) {
+			if (game.hardcore && tflag) {
 				if (game.tetramino_x == 0) return;
 				boolean left = true;
 				boolean flag = check_tetramino_move(left);
@@ -3164,7 +3179,7 @@ private void prev_tetr_rot() {
 			}
 		}
 		if(Gdx.input.isKeyPressed(Input.Keys.E)){
-			if (game.hardcore) {
+			if (game.hardcore && tflag) {
 				int width = get_tetramino_width(game.tetramino_type, game.tetramino_rot);
 				if (width + game.tetramino_x > game.tetris_w_tiles - 1) return;
 
@@ -3188,24 +3203,30 @@ private void prev_tetr_rot() {
 		}
 		if(Gdx.input.isKeyPressed(Input.Keys.SPACE)){
 			if (game_state ==0) {
-				if (!ask_username.username.equals("none")) player_name = ask_username.username;
-				new_game();
+				if ((TimeUtils.millis() - desktop_state_timeout > 2000)) {
+					if (!ask_username.username.equals("none")) player_name = ask_username.username;
+					new_game();
+				}
 			}
 			else {
-				if (!game_over_flag) {
+				if (!game_over_flag && tflag) {
 					if ((game.easy_mode_state == 2) || (game.hardcore)) {
 						if (check_tetramino_rot()) next_tetr_rot();
 					}
 				}
 			}
+
 			if (game_over_flag) {
 				if (TimeUtils.millis() - last_game_over_time > 2000) {
 					first_try = false;
 					game_state = 0;
 					Gdx.input.setInputProcessor(ui);
+					desktop_state_timeout=TimeUtils.millis();
+
 				}
 			}
 		}
+		tflag = false;
 
 	}
 
@@ -3233,7 +3254,6 @@ private void prev_tetr_rot() {
 		shapeRenderer.end();
 		Gdx.gl.glLineWidth(1);
 		if (logic) {
-			handlekbdinput();
 			check_easy_win();
 			rack_ai();
 			coll_resolve();
@@ -3356,15 +3376,16 @@ private void prev_tetr_rot() {
 
 	@Override
 	public void resize(int width, int height) {
-		viewport.update(width, height);
 		detect_tile_size();
+		viewport.update(width, height);
+
 	}
 
 	@Override
 	public void render () {
 			Gdx.gl.glClearColor(OLD_TETRIS_COLOR[0], OLD_TETRIS_COLOR[1], OLD_TETRIS_COLOR[2], 1);
 			Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-
+			handlekbdinput();
 			switch (game_state) {
 				case 0: render_gui();
 					break;
@@ -3603,4 +3624,5 @@ class TetrasnakonoidGame
 	Color t_color;
 	public static final int super_scores = 5;
 	int scores;
+
 }
