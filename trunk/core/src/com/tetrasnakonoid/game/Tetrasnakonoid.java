@@ -78,7 +78,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private static final long jingle_timeout = 2000;
 
 	private Texture ball, racket;
-	private Sprite spr_pc_racket, spr_ai_racket, spr_ball, spr_lulz_ball;
+	private Sprite spr_pc_racket, spr_ai_racket, spr_ball, spr_lulz_ball, spr_false_ball;
 	private TextureRegion ball_frames[];
 	private int total_ball_frames = 0;
 	private int current_ball_frame = 0;
@@ -118,6 +118,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private TextureRegion game_over_background;
 	private Drawable drw_game_over_back, drw_sharefb, drw_sharetw, drw_sharevk, drw_sharegh;
 	private ImageButton btn_game_over_back, btn_sharefb, btn_sharetw, btn_sharevk, btn_sharegh;
+	private Sprite hardcoremark;
 
 	private BitmapFont fnt_game_over;
 	private Label lbl_scores_final, lbl_quote_final;
@@ -323,9 +324,53 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		game.ball.last_col_y = -50;
 	}
 
+	private void next_pitch() {
+		game.kicked_back = false;
+		game.got_food = false;
+		game.pitch_out = false;
+		game.easy_mode_state = 0;
+		Random rand = new Random();
+		game.ball.v = 0.25f * game.vp_w + 0.1f*game.difficulty_a;
+		game.ball.v *=0.4;
+
+		float angle = 30.0f + (float) (Math.random() * ((150.0f - 30.0f) + 1.0f)) - 90.0f;
+		game.pc_pitcher = rand.nextBoolean();
+		if (!game.pc_pitcher) {
+			game.ball.x = game.ai.bb.x - game.tile_size_px/2;
+			game.ball.y = game.ai.bb.y;
+			angle -= 180.0f;
+
+			game.false_ball.x = game.pc.bb.x + game.tile_size_px;
+			game.false_ball.y = game.pc.bb.y;
+
+		} else {
+			game.ball.x = game.pc.bb.x + game.tile_size_px;
+			game.ball.y = game.pc.bb.y;
+
+			game.false_ball.x = game.ai.bb.x - game.tile_size_px/2;
+			game.false_ball.y = game.ai.bb.y;
+
+		}
+		angle = torad(angle);
+
+		game.ball.vx = (float) Math.cos(angle) * game.ball.v;
+		game.ball.vy = (float) Math.sin(angle) * game.ball.v;
+		game.ball.dx = 0.0f;
+		game.ball.dy = 0.0f;
+		game.ball.angle = angle;
+		game.ball.last_col = TimeUtils.millis();
+		game.ball.last_col_x = -50;
+		game.ball.last_col_y = -50;
+	}
+
 	private void init_ball() {
 		game.ball = new Ball();
-		next_ball();
+		game.false_ball = new Ball();
+		if (game.hardcore)
+			next_ball();
+		else
+			next_pitch();
+
 		spr_ball = new Sprite(ball_frames[0]);
 		spr_ball.setOriginCenter();
 		spr_ball.setColor(game.a_color);
@@ -335,14 +380,18 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
         spr_lulz_ball.setOriginCenter();
         spr_lulz_ball.setColor(game.a_color);
         spr_lulz_ball.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k);
+
+
+		spr_false_ball = new Sprite(ball_frames[0]);
+		spr_false_ball.setOriginCenter();
+		spr_false_ball.setColor(game.a_color);
+		spr_false_ball.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k);
 	}
 
 	private void init_arcanoid() {
 		game.difficulty_a = 0;
 		init_pc_racket();
 		init_ai_racket();
-		Random r = new Random();
-		game.pc_pitcher = r.nextBoolean();
 		init_ball();
 
 	}
@@ -397,6 +446,65 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		return false;
 	}
 
+	private void change_ball_course()
+	{
+		float angle = 30.0f + (float) (Math.random() * ((150.0f - 30.0f) + 1.0f)) - 90.0f;
+
+		if (!game.pc_pitcher) {
+			angle -= 180.0f;
+		}
+		angle = torad(angle);
+		game.ball.vx = (float) Math.cos(angle) * game.ball.v;
+		game.ball.vy = (float) Math.sin(angle) * game.ball.v;
+		game.ball.dx = 0.0f;
+		game.ball.dy = 0.0f;
+		game.ball.angle = angle;
+	}
+
+	private boolean check_food_easy()
+	{
+		PointT p1 = new PointT(game.foodx,game.foody);
+		PointT p2 = snake_to_tetris(p1);
+
+		if ((p2.x<0) || (p2.y<0) || (p2.x>=game.tetris_w_tiles) || (p2.y>=game.tetris_h_tiles)) { return true;}
+
+		if (game.blocks[p2.y][p2.x] == 1) { return true; }
+
+		return false;
+	}
+	private void next_food_easy()
+	{
+		Random r = new Random();
+		int x = (TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2;
+		int h = get_tetramino_height(game.tetramino_type, game.tetramino_rot);
+
+		int cnt =0;
+		do {
+			boolean left = r.nextBoolean();
+			int deltax = r.nextInt(4) + 1;
+			int deltay = r.nextInt(5) + 3;
+			if (game.tetris_reverse_gravity) {
+				if (left) {
+					game.foodx = x + game.tetramino_x - deltax;
+				}
+				else{
+					game.foodx = x + game.tetramino_x + deltax;
+				}
+				game.foody = game.tetramino_y + h + deltay;
+			} else {
+				if (left) {
+					game.foodx = x + game.tetramino_x - deltax;
+				}
+				else {
+					game.foodx = x + game.tetramino_x + deltay;
+				}
+				game.foody = game.tetramino_y - deltay;
+			}
+			cnt++;
+			if (cnt > 100) {game.got_food = true;}
+		} while(check_food_easy());
+	}
+
 	private void next_food() {
 		game.snake_hunger = 1.2f*game.vp_w;
 		do {next_food_xy();} while(food_in_snake());
@@ -406,6 +514,21 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 
 		spr_food.setRegion(TetrasnakonoidGame.sprite_tile_size_px*(game.food_id),0 , TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px);
 	}
+
+	private void next_easy_snake() {
+		Random r = new Random();
+		int x = (TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2;
+
+		game.heady = r.nextInt(TetrasnakonoidGame.max_height_tiles);
+		game.headx = r.nextInt(game.tetris_w_tiles) + x;
+		game.s_length = TetrasnakonoidGame.snake_init_length_tiles_easy;
+
+		int rd = r.nextInt((4 - 1) + 1) + 1;
+		for (int i=0;i<game.s_length;i++) {
+			game.snake_directions.add(rd);
+		}
+	}
+
 	private void init_snake(){
 		game.snake_hunger = 1.2f*game.vp_w;
 		game.difficulty_s = 0;
@@ -414,16 +537,24 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		game.s_length = TetrasnakonoidGame.snake_init_length_tiles;
 		int index = 0;
 
-		Random r = new Random(); int rd = r.nextInt((4 - 1) + 1) + 1;
-		for (int i=0;i<game.s_length;i++) {
-			game.snake_directions.add(rd);
-		}
 		TextureRegion fr = new TextureRegion(food,TetrasnakonoidGame.sprite_tile_size_px*(game.food_id),0 , TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px);
 		spr_food = new Sprite(fr);
 
-		next_food_xy(); game.headx = game.foodx;
-		game.heady= r.nextInt(TetrasnakonoidGame.max_height_tiles);
-		next_food();
+		Random r = new Random(); int rd = r.nextInt((4 - 1) + 1) + 1;
+		if (game.hardcore) {
+			for (int i=0;i<game.s_length;i++) {
+				game.snake_directions.add(rd);
+			}
+			next_food_xy();
+			game.headx = game.foodx;
+			game.heady = r.nextInt(TetrasnakonoidGame.max_height_tiles);
+			next_food();
+		}
+		else{
+			next_easy_snake();
+		}
+
+
 
 		spr_food.setColor(game.s_color);
 		spr_food.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k);
@@ -710,10 +841,10 @@ private void prev_tetr_rot() {
 
 		game.blocks = new int[game.tetris_h_tiles+4][game.tetris_w_tiles+4];
 		for (int i =0; i < game.tetris_h_tiles+4; ++i)
-			for(int j =0;j<game.tetris_w_tiles;++j){
+			for(int j =0;j<game.tetris_w_tiles+4;++j){
 					game.blocks[i][j]=0;
 			}
-		next_tetramino();
+		if (game.hardcore) next_tetramino();
 
 		spr_tetrotile = new Sprite(tetrotile);
 		spr_tetrotile.setColor(game.t_color);
@@ -748,39 +879,42 @@ private void prev_tetr_rot() {
 		lbl+= " ";
 		lbl+= String.valueOf(last_score);
 		lbl_last_try_out.setText(lbl);
-
-		if (game.scores > high_score) {
+		boolean flag = false;
+		if ((game.scores > high_score) && (game.hardcore)) {
 			top_player_name = player_name;
 			high_score = game.scores;
 
-			if (game.hardcore) {
-				out += "\n";
-				out += String.valueOf(game.scores);
-				out += "\n";
-				out += player_name;
-				out += "\n";
-				out += String.valueOf(game.scores);
-			}
-			else {
-				out += "\n";
-				out += String.valueOf(game.scores);
-				out += "\n";
-				out += player_name;
-				out += "\n";
-				out += String.valueOf(game.scores);
-			}
-
+			out += "\n";
+			out += String.valueOf(game.scores);
+			out += "\n";
+			out += top_player_name_easy;
+			out += "\n";
+			out += String.valueOf(high_score_easy);
 			scores.writeString(out,false);
-
-			lbl = "TOP : ";
-			lbl+= last_player_name;
-			lbl+= " ";
-			lbl+= String.valueOf(last_score);
-			lbl_last_try_out.setText(lbl);
-			lbl_high_scores_out.setText(lbl);
+			flag = true;
 		}
 
+		if ((game.scores > high_score_easy) && (!game.hardcore)) {
+			top_player_name_easy = player_name;
+			high_score_easy = game.scores;
 
+			out = top_player_name;
+			out += "\n";
+			out += String.valueOf(high_score);
+			out += "\n";
+			out += player_name;
+			out += "\n";
+			out += String.valueOf(game.scores);
+			scores.writeString(out,false);
+			flag = true;
+		}
+		if (flag) {
+			lbl = "TOP: ";
+			lbl += last_player_name;
+			lbl += " ";
+			lbl += String.valueOf(last_score);
+			lbl_high_scores_out.setText(lbl);
+		}
 		String out2 = player_name;
 		out2+="\n";
 		if  (sndmuted) out2 +=String.valueOf(0); else out2 +=String.valueOf(1);
@@ -788,7 +922,6 @@ private void prev_tetr_rot() {
 		if  (musicmuted) out2 +=String.valueOf(0); else out2 +=String.valueOf(1);
 		out2+="\n";
 		if  (game.hardcore) out2 +=String.valueOf(1); else out2 +=String.valueOf(0);
-
 		config.writeString(out2,false);
 
 	}
@@ -822,13 +955,28 @@ private void prev_tetr_rot() {
 		newfag_quotes[9] = "All Your Base Are Belong To Us";
 		newfag_quotes[10] = "The Game";
 
+		int total_easy_quotes = 10;
+		final String[] easy_quotes = new String[total_easy_quotes];
+		easy_quotes[0] = "Try hard, go hardcore.";
+		easy_quotes[1] = "Easy mode is for kids.";
+		easy_quotes[2] = "Are you 12?";
+		easy_quotes[3] = "Easy mode. AHAHAHAHAHAAHAHAH.";
+		easy_quotes[4] = "Too easy.";
+		easy_quotes[5] = "Hardcore is the answer.";
+		easy_quotes[6] = "Special easy mode. Even if you win...";
+		easy_quotes[7] = "EASY! EASY! EASY!";
+		easy_quotes[8] = "Skip tutorial.";
+		easy_quotes[9] = "Casuals. Casuals never changes.";
 		Random r = new Random();
+
+		if (!game.hardcore) {return easy_quotes[r.nextInt(total_easy_quotes)];}
+
 		if (scores>300) return quotes[r.nextInt(total_win_quotes)]; else return newfag_quotes[r.nextInt(total_newfag_quotes)];
 	}
 
 
-	private void game_over(){
-		if (DEBUG) { return; /*new_game();*/}
+	private void game_over(int source){
+		if (DEBUG) { Gdx.app.debug(LOG_TAG, "Gameover reason: " + source); new_game();}
 
 		game_state = 4;
 		Gdx.input.setInputProcessor(gameover);
@@ -867,6 +1015,10 @@ private void prev_tetr_rot() {
 			game.tetris_h_tiles = TetrasnakonoidGame.tetris_h_tiles_easy;
 			game.tetris_w_tiles = TetrasnakonoidGame.tetris_w_tiles_easy;
 		}
+		game.easy_tetris_rect.x = game.tile_size_px*TetrasnakonoidGame.max_width_tiles/2;
+		game.easy_tetris_rect.y = game.tile_size_px*TetrasnakonoidGame.max_height_tiles/2;
+		game.easy_tetris_rect.h = game.tile_size_px*TetrasnakonoidGame.max_height_tiles/2;
+		game.easy_tetris_rect.w = game.tile_size_px*TetrasnakonoidGame.tetris_w_tiles_easy/2;
 	}
 	private void new_game() {
 		if (DEBUG) {
@@ -878,7 +1030,9 @@ private void prev_tetr_rot() {
 
 		set_random_colors();
 		place_walls();
+		game.easy_tetris_rect = new Rect();
 		recalc_tile_widths();
+		game.easy_mode_state = 0;
 		init_arcanoid();
 		init_snake();
 		init_tetris();
@@ -980,6 +1134,10 @@ private void prev_tetr_rot() {
 		TextureRegionDrawable drw_logo = new TextureRegionDrawable(new TextureRegion(header));
 		img_header = new Image(drw_logo);
 		Image logo = new Image(header);
+
+		hardcoremark = new Sprite(hardcoredown);
+		hardcoremark.setPosition(Gdx.graphics.getWidth()/2 - hardcoredown.getWidth()/2, Gdx.graphics.getHeight()/2 - hardcoredown.getHeight()/2);
+		hardcoremark.setAlpha(0.5f);
 
 		gameover = new Stage(viewport);
 		game_over_layout = new Table();
@@ -1235,35 +1393,93 @@ private void prev_tetr_rot() {
 		btn_gamepadup.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
+				if (game.easy_mode_state <=1) {
+					int orientation = game.snake_directions.getFirst();
+					if ((orientation == 3) || (orientation == 4)) {
+						game.next_snake_dir = 2;
+					}
+				}
 
+				if (game.easy_mode_state>=2) {
+					int max = game.vp_h - game.pc.bb.h;
+					if (game.pc_pitcher) {
+						game.ai.target_y = max;
+					}
+					else {
+						game.pc.target_y = max;
+					}
+				}
 			}
 		});
 
 		btn_gamepaddown.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
+				if (game.easy_mode_state <=1) {
+					int orientation = game.snake_directions.getFirst();
+					if ((orientation == 3) || (orientation == 4)) {
+						game.next_snake_dir = 1;
+					}
+				}
 
+				if (game.easy_mode_state>=2) {
+					int min = game.pc.bb.h;
+					if (game.pc_pitcher) {
+						game.ai.target_y = min;
+					}
+					else {
+						game.pc.target_y = min;
+					}
+				}
 			}
 		});
 
 		btn_gamepadleft.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
-
+				if (game.easy_mode_state <=1) {
+					int orientation = game.snake_directions.getFirst();
+					if ((orientation == 1) || (orientation == 2)) {
+						game.next_snake_dir = 3;
+					}
+				}
+				if (game.easy_mode_state==2) {
+					if (game.tetramino_x == 0) return;
+					boolean left = true;
+					boolean flag = check_tetramino_move(left);
+					if (flag) game.tetramino_x--;
+				}
 			}
 		});
 
 		btn_gamepadright.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
+				if (game.easy_mode_state <=1) {
+					int orientation = game.snake_directions.getFirst();
+					/* Vertical */
+						if ((orientation == 1) || (orientation == 2)) {
+							game.next_snake_dir = 4;
+						}
+				}
 
+				if (game.easy_mode_state==2) {
+					int width = get_tetramino_width(game.tetramino_type, game.tetramino_rot);
+					if (width + game.tetramino_x > game.tetris_w_tiles - 1) return;
+
+					boolean flag = check_tetramino_move(false);
+					if ((flag))
+						game.tetramino_x++;
+				}
 			}
 		});
 
 		btn_gamepadrot.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
-
+				if (game.easy_mode_state==2) {
+					if (check_tetramino_rot()) next_tetr_rot();
+				}
 			}
 		});
 
@@ -1345,10 +1561,16 @@ private void prev_tetr_rot() {
 
 		String lbl ="TOP: ";
 		if (has_high_scores) {
-			lbl += top_player_name;
-			lbl += " ";
-			lbl += String.valueOf(high_score);
-
+			if (game.hardcore) {
+				lbl += top_player_name;
+				lbl += " ";
+				lbl += String.valueOf(high_score);
+			}
+			else {
+				lbl += top_player_name_easy;
+				lbl += " ";
+				lbl += String.valueOf(high_score_easy);
+			}
 		}
 		else {
 			lbl += "Anonymous 0";
@@ -1531,6 +1753,32 @@ private void prev_tetr_rot() {
 			public void clicked(InputEvent event, float x, float y) {
 				game.hardcore =!game.hardcore;
 				hardcorefire.getEmitters().first().setPosition(btn_hardcore.getX() + btn_hardcore.getWidth()/2, btn_hardcore.getY()+ btn_hardcore.getHeight()/2);
+				String lbl1 = "TOP: ";
+				String lbl2= "LAST: ";
+				if (game.hardcore) {
+					if (!first_try) {
+						lbl2 += last_player_name;
+						lbl2 += " ";
+						lbl2 += String.valueOf(last_score);
+						lbl_last_try_out.setText(lbl2);
+					}
+					lbl1 +=top_player_name;
+					lbl1 +=" ";
+					lbl1 += String.valueOf(high_score);
+					lbl_high_scores_out.setText(lbl1);
+				}
+				else {
+					if (!first_try) {
+						lbl2 += last_player_name;
+						lbl2 += " ";
+						lbl2 += String.valueOf(last_score);
+						lbl_last_try_out.setText(lbl2);
+					}
+					lbl1 +=top_player_name_easy;
+					lbl1 +=" ";
+					lbl1 += String.valueOf(high_score_easy);
+					lbl_high_scores_out.setText(lbl1);
+				}
 			}
 		});
 
@@ -1694,6 +1942,7 @@ private void prev_tetr_rot() {
 		rect_to_sprite(spr_ai_racket, game.ai.bb);
 		rect_to_sprite(spr_ball, ball_to_rect(game.ball));
 		if (game.has_lulz_ball) rect_to_sprite(spr_lulz_ball, ball_to_rect(game.lulz_ball));
+		if (!game.hardcore)	rect_to_sprite(spr_false_ball, ball_to_rect(game.false_ball));
 
 		ball_animation_acc += Gdx.graphics.getDeltaTime();
 
@@ -1701,26 +1950,42 @@ private void prev_tetr_rot() {
 			current_ball_frame++; if (current_ball_frame == total_ball_frames) current_ball_frame = 0;
 			ball_animation_acc = 0;
 			spr_ball.setRegion(new TextureRegion(ball,TetrasnakonoidGame.sprite_tile_size_px*current_ball_frame, 0, TetrasnakonoidGame.sprite_tile_size_px,TetrasnakonoidGame.sprite_tile_size_px));
+			if (!game.hardcore)
+			spr_false_ball.setRegion(new TextureRegion(ball,TetrasnakonoidGame.sprite_tile_size_px*current_ball_frame, 0, TetrasnakonoidGame.sprite_tile_size_px,TetrasnakonoidGame.sprite_tile_size_px));
+
 		}
 
 	}
 
 	private void animate_ball() {
-		float dt = Gdx.graphics.getDeltaTime();
-		game.ball.dx += game.ball.vx * dt;
-		game.ball.dy += game.ball.vy * dt;
+		if (game.hardcore || game.easy_mode_state > 0) {
+			float dt = Gdx.graphics.getDeltaTime();
+			game.ball.dx += game.ball.vx * dt;
+			game.ball.dy += game.ball.vy * dt;
 
-		int dx = (int) Math.ceil(game.ball.dx);
-		int dy = (int) Math.ceil(game.ball.dy);
+			int dx = (int) Math.ceil(game.ball.dx);
+			int dy = (int) Math.ceil(game.ball.dy);
 
-		if (dx != 0) {
-			game.ball.x += dx;
-			game.ball.dx = 0.0f;
+			if (dx != 0) {
+				game.ball.x += dx;
+				game.ball.dx = 0.0f;
+			}
+			if (dy != 0) {
+				game.ball.y += dy;
+				game.ball.dy = 0.0f;
+			}
 		}
-		if (dy != 0) {
-			game.ball.y += dy;
-			game.ball.dy = 0.0f;
+		if (!game.hardcore && game.easy_mode_state == 0) {
+			if (!game.pc_pitcher) {
+				game.false_ball.y = game.pc.bb.y;
+				game.ball.y = game.ai.bb.y;
+
+			} else {
+				game.false_ball.y = game.ai.bb.y;
+				game.ball.y = game.pc.bb.y;
+			}
 		}
+
 	}
 
     private void animate_lulz_ball() {
@@ -1957,56 +2222,225 @@ private void prev_tetr_rot() {
 			if (!sndmuted) { jingle.play(1.0f); last_jingle = TimeUtils.millis(); }
 		}
 	}
-	private void coll_resolve() {
-		if (rect_circle(game.wall[0], ball_to_rect(game.ball))) { reflect_ball(game.ball, game.wall[0]); }
-		if (rect_circle(game.wall[1], ball_to_rect(game.ball) )) { reflect_ball(game.ball, game.wall[1]);}
-		if (rect_circle(game.wall[2], ball_to_rect(game.ball))) { game_over();}
-		if (rect_circle(game.wall[3], ball_to_rect(game.ball) )) { next_ball(); game.scores+=TetrasnakonoidGame.super_scores;  jingle_jingle();}
 
-		if (rect_circle(game.ai.bb,ball_to_rect(game.ball))) {reflect_ball(game.ball, game.ai.bb); game.pc_turn = true;}
-		if (rect_circle(game.pc.bb,ball_to_rect(game.ball))) {reflect_ball(game.ball, game.pc.bb); if (game.pc_turn) game.scores++; game.pc_turn = false; jingle_jingle();}
+	private void easy_snake_to_tetramino()
+	{
+		PointT a,b,c;
+		a = index_to_snake_xy(0);
+		b = index_to_snake_xy(1);
+		c = index_to_snake_xy(2);
 
-		if (rect_rect(game.ai.bb, snake_to_rect(game.headx, game.heady))) { game_over();}
-		if (rect_rect(game.pc.bb, snake_to_rect(game.headx, game.heady))) { game_over();}
+		int type,rot;
+		type = 0; rot = 0;
+		int type1[] = new int[]{1,4,5,6};
+		int type2[] = new int[]{0,2,3,4,5,6};
+		Random r = new Random();
 
-
-		for (int i =1; i<game.s_length; ++i) {
-			PointT p = index_to_snake_xy(i);
-			Rect r = snake_to_rect(p.x,p.y);
-			if (rect_rect(game.ai.bb, r) ||
-				rect_rect(game.pc.bb,r) ||
-				rect_circle(r,ball_to_rect(game.ball))
-				){
-				if (i<TetrasnakonoidGame.snake_init_length_tiles) {
-					for (int j=TetrasnakonoidGame.snake_init_length_tiles;j<game.s_length;++j) game.snake_directions.removeLast();
-					game.s_length = TetrasnakonoidGame.snake_init_length_tiles;
+		if ((a.x == b.x) && (b.x == c.x)) {
+			type = type1[r.nextInt(type1.length)];
+			if (type ==1) {
+				rot  = 0;
+			}
+			else {
+				if (r.nextInt()%2 == 0) {
+					rot = 0;
 				}
-				else {
-					for (int j=i;j<game.s_length;++j) game.snake_directions.removeLast();
-					game.s_length = i; break;
-
+				else
+				{
+					rot = 2;
 				}
 			}
 		}
 
-		int width = get_tetramino_width(game.tetramino_type, game.tetramino_rot);
-		int height = get_tetramino_height(game.tetramino_type, game.tetramino_rot);
-		for (int i =game.tetramino_y; i< game.tetramino_y+ height;++i) {
-			for (int j=game.tetramino_x; j<game.tetramino_x + width;++j) {
+		if ((a.y == b.y) && (b.y == c.y)) {
+			type = type1[r.nextInt(type1.length)];
+			if (type ==1) {
+				rot  = 1;
+			}
+			else {
+				if (r.nextInt()%2 == 0) {
+					rot = 1;
+				}
+				else
+				{
+					rot = 3;
+				}
+			}
+		}
+
+
+		if	    (((a.x == c.x - 1) && (a.y == c.y - 1)) ||
+				((a.x == c.x + 1) && (a.y == c.y + 1)) ||
+				((a.x == c.x - 1) && (a.y == c.y + 1)) ||
+				((a.x == c.x + 1) && (a.y == c.y - 1))) {
+			type = type2[r.nextInt(type1.length)];
+			if (type == 0) { rot = 0; }
+			if ((type == 2) || (type == 3)) {rot = r.nextInt(2);}
+			if (type>=4) {rot = r.nextInt(4);}
+		}
+
+
+		PointT p = snake_to_tetris(a);
+
+		game.tetramino_type = type;
+		game.tetramino_rot = rot;
+		game.tetramino_x = p.x;
+		game.tetramino_y = p.y;
+		put_tetramino(game.tetramino_type, game.tetramino_rot,  game.tetramino_x, game.tetramino_y);
+
+	}
+
+	private void coll_resolve() {
+		if (rect_circle(game.wall[0], ball_to_rect(game.ball))) { reflect_ball(game.ball, game.wall[0]); }
+		if (rect_circle(game.wall[1], ball_to_rect(game.ball) )) { reflect_ball(game.ball, game.wall[1]);}
+		if (rect_circle(game.wall[2], ball_to_rect(game.ball))) {
+			if (game.hardcore) {
+				game_over(0);
+			}
+			else {
+				if (!game.pc_pitcher) {
+					game_over(1);
+				}
+			}
+		}
+		if (rect_circle(game.wall[3], ball_to_rect(game.ball) )) {
+			if (game.hardcore) {
+				next_ball();
+				game.scores += TetrasnakonoidGame.super_scores;
+				jingle_jingle();
+			}
+			else {
+				if (game.pc_pitcher) { game_over(2);}
+			}
+		}
+
+		if (rect_circle(game.ai.bb,ball_to_rect(game.ball))) {
+			if (game.hardcore) {
+				reflect_ball(game.ball, game.ai.bb);
+				game.pc_turn = true;
+			}
+			if (game.pc_pitcher) {
+				game.kicked_back = true;
+				reflect_ball(game.ball, game.ai.bb);
+				jingle_jingle();
+			}
+		}
+		if (rect_circle(game.pc.bb,ball_to_rect(game.ball))) {
+			if (game.hardcore) {
+				reflect_ball(game.ball, game.pc.bb);
+				if (game.pc_turn) game.scores++;
+				game.pc_turn = false;
+				jingle_jingle();
+			}
+			else {
+				if (!game.pc_pitcher) {
+					game.kicked_back = true;
+					reflect_ball(game.ball, game.pc.bb);
+					jingle_jingle();
+				}
+			}
+		}
+
+		if (rect_rect(game.ai.bb, snake_to_rect(game.headx, game.heady))) { game_over(3);}
+		if (rect_rect(game.pc.bb, snake_to_rect(game.headx, game.heady))) { game_over(4);}
+
+		if (game.hardcore) {
+			for (int i = 1; i < game.s_length; ++i) {
+				PointT p = index_to_snake_xy(i);
+				Rect r = snake_to_rect(p.x, p.y);
+				if (rect_rect(game.ai.bb, r) ||
+						rect_rect(game.pc.bb, r) ||
+						rect_circle(r, ball_to_rect(game.ball))
+						) {
+					if (i < TetrasnakonoidGame.snake_init_length_tiles) {
+						for (int j = TetrasnakonoidGame.snake_init_length_tiles; j < game.s_length; ++j)
+							game.snake_directions.removeLast();
+						game.s_length = TetrasnakonoidGame.snake_init_length_tiles;
+					} else {
+						for (int j = i; j < game.s_length; ++j) game.snake_directions.removeLast();
+						game.s_length = i;
+						break;
+
+					}
+				}
+			}
+		}
+		else {
+			for (int i = 0; i < TetrasnakonoidGame.snake_init_length_tiles_easy; ++i) {
+				PointT p = index_to_snake_xy(i);
+				Rect r = snake_to_rect(p.x, p.y);
+				if ((rect_circle(r, ball_to_rect(game.ball))) && (game.easy_mode_state == 1)) {
+					easy_snake_to_tetramino();
+					if (game.ball.y > game.vp_h/2) { game.tetris_reverse_gravity = false; } else {game.tetris_reverse_gravity = true;}
+					next_food_easy();
+					change_ball_course();
+					jingle_jingle();
+					game.easy_mode_state = 2;
+				}
+			}
+
+			if (rect_rect(ball_to_rect(game.ball), game.easy_tetris_rect ) &&(game.easy_mode_state==1)) { game.pitch_out = true; }
+
+			int x = (TetrasnakonoidGame.max_width_tiles - TetrasnakonoidGame.tetris_w_tiles_easy)/2;
+			if (game.pc_pitcher) {
+				if ((game.ball.x > (x+TetrasnakonoidGame.tetris_w_tiles_easy+2)*game.tile_size_px) && (game.easy_mode_state == 1)) {
+					game_over(5);
+				}
+
+				if ((game.pitch_out) && (game.ball.x < (x-3)*game.tile_size_px)) {
+					next_pitch();
+				}
+			}
+			else {
+				if ((game.ball.x < (x-2)*game.tile_size_px) && (game.easy_mode_state == 1)) {
+					game_over(6);
+				}
+
+				if ((game.pitch_out) && (game.ball.x > (x+3+TetrasnakonoidGame.tetris_w_tiles_easy)*game.tile_size_px)) {
+					next_pitch();
+				}
+			}
+
+
+
+
+
+		}
+		if (game.hardcore) {
+			int width = get_tetramino_width(game.tetramino_type, game.tetramino_rot);
+			int height = get_tetramino_height(game.tetramino_type, game.tetramino_rot);
+			for (int i = game.tetramino_y; i < game.tetramino_y + height; ++i) {
+				for (int j = game.tetramino_x; j < game.tetramino_x + width; ++j) {
+					if (has_block(i, j)) {
+						if (rect_circle(block_to_rect(j, i), ball_to_rect(game.ball))) {
+							clear_tetramino();
+							next_tetramino();
+						}
+					}
+				}
+			}
+		}
+		for (int i =0; i< game.tetris_h_tiles;++i) {
+			for (int j = 0; j< game.tetris_w_tiles;++j) {
 				if (has_block(i,j)) {
 					if (rect_circle(block_to_rect(j, i), ball_to_rect(game.ball))) {
-						clear_tetramino();
-						next_tetramino();
+						if ((game.hardcore) || (game.easy_mode_state <2))
+							reflect_ball(game.ball, block_to_rect(j,i));
 					}
 				}
 			}
 		}
 
-		for (int i =0; i< game.tetris_h_tiles;++i) {
-			for (int j = 0; j< game.tetris_w_tiles;++j) {
-				if (has_block(i,j)) {
-					if (rect_circle(block_to_rect(j, i), ball_to_rect(game.ball))) {
-						reflect_ball(game.ball, block_to_rect(j,i));
+
+		if (!game.hardcore) {
+			int width = get_tetramino_width(game.tetramino_type, game.tetramino_rot);
+			int height = get_tetramino_height(game.tetramino_type, game.tetramino_rot);
+			for (int i = game.tetramino_y; i < game.tetramino_y + height; ++i) {
+				for (int j = game.tetramino_x; j < game.tetramino_x + width; ++j) {
+					if (has_block(i, j)) {
+						if (rect_circle(block_to_rect(j, i), snake_to_rect(game.foodx,game.foody))) {
+							game.got_food = true; jingle_jingle();
+						}
 					}
 				}
 			}
@@ -2045,44 +2479,54 @@ private void prev_tetr_rot() {
 
 
 	private void check_snake_collisions() {
-		int width = get_tetramino_width(game.tetramino_type, game.tetramino_rot);
-		int height = get_tetramino_height(game.tetramino_type, game.tetramino_rot);
-		for (int i =game.tetramino_y; i< game.tetramino_y+ height;++i) {
-			for (int j=game.tetramino_x; j<game.tetramino_x + width;++j) {
-				if (has_block(i,j)) {
-					if (rect_rect(snake_to_rect(game.headx, game.heady), block_to_rect(j, i))) {
-						clear_tetramino();
-						next_tetramino();
-						game.scores += TetrasnakonoidGame.super_scores; jingle_jingle();
-						game.s_length--; game.snake_directions.removeLast(); if (game.s_length <= TetrasnakonoidGame.snake_init_length_tiles) {snake_to_block(); game_over();}
+		if (game.hardcore) {
+			int width = get_tetramino_width(game.tetramino_type, game.tetramino_rot);
+			int height = get_tetramino_height(game.tetramino_type, game.tetramino_rot);
+			for (int i = game.tetramino_y; i < game.tetramino_y + height; ++i) {
+				for (int j = game.tetramino_x; j < game.tetramino_x + width; ++j) {
+					if (has_block(i, j)) {
+						if (rect_rect(snake_to_rect(game.headx, game.heady), block_to_rect(j, i))) {
+							clear_tetramino();
+							next_tetramino();
+							game.scores += TetrasnakonoidGame.super_scores;
+							jingle_jingle();
+							game.s_length--;
+							game.snake_directions.removeLast();
+							if (game.s_length <= TetrasnakonoidGame.snake_init_length_tiles) {
+								snake_to_block();
+								game_over(7);
+							}
+						}
 					}
 				}
 			}
-		}
-		for (int i =game.tetramino_y; i< game.tetramino_y+ height;++i) {
-			for (int j=game.tetramino_x; j<game.tetramino_x + width;++j) {
-				for (int k = 1; k<game.s_length;k++) {
-					PointT p = index_to_snake_xy(k);
-					Rect r = snake_to_rect(p.x,p.y);
-					if ((has_block(i,j)) && (rect_rect(block_to_rect(j,i), r))) {
-						if (k < TetrasnakonoidGame.snake_init_length_tiles) {
-							for (int l=TetrasnakonoidGame.snake_init_length_tiles;l<game.s_length;++l) game.snake_directions.removeLast();
-							game.s_length = TetrasnakonoidGame.snake_init_length_tiles;
-						} else {
-							for (int l=k;l<game.s_length;++l) game.snake_directions.removeLast();
-							game.s_length = k;
-							break;
+			for (int i = game.tetramino_y; i < game.tetramino_y + height; ++i) {
+				for (int j = game.tetramino_x; j < game.tetramino_x + width; ++j) {
+					for (int k = 1; k < game.s_length; k++) {
+						PointT p = index_to_snake_xy(k);
+						Rect r = snake_to_rect(p.x, p.y);
+						if ((has_block(i, j)) && (rect_rect(block_to_rect(j, i), r))) {
+							if (k < TetrasnakonoidGame.snake_init_length_tiles) {
+								for (int l = TetrasnakonoidGame.snake_init_length_tiles; l < game.s_length; ++l)
+									game.snake_directions.removeLast();
+								game.s_length = TetrasnakonoidGame.snake_init_length_tiles;
+							} else {
+								for (int l = k; l < game.s_length; ++l)
+									game.snake_directions.removeLast();
+								game.s_length = k;
+								break;
+							}
 						}
 					}
 				}
 			}
 		}
-
 		for (int i =0; i< game.tetris_h_tiles;++i) {
 			for (int j=0; j<game.tetris_w_tiles;++j) {
 				if (game.blocks[i][j] == 1) {
 					if (rect_rect(snake_to_rect(game.headx, game.heady), block_to_rect(j, i))) {
-						game_over();
+						if ((game.hardcore) || (game.easy_mode_state <=1))
+						game_over(8);
 					}
 				}
 			}
@@ -2092,19 +2536,22 @@ private void prev_tetr_rot() {
 			PointT p =  index_to_snake_xy(i);
 			if ((p.x == game.headx) &&
 					(p.y == game.heady)){
-				game_over();
+				game_over(9);
 			}
 		}
 
-		if (rect_rect(snake_to_rect(game.foodx, game.foody), ball_to_rect(game.ball))){
-		    next_lulz_ball();
-        }
+		if (game.hardcore) {
+			if (rect_rect(snake_to_rect(game.foodx, game.foody), ball_to_rect(game.ball))){
+				next_lulz_ball();
+			}
 
-        if (game.snake_hunger < game.tile_size_px) {
-			game.s_length--;
-			game.snake_directions.removeLast();
-			if (game.s_length <= TetrasnakonoidGame.snake_init_length_tiles) {
-				game_over();
+
+			if (game.snake_hunger < game.tile_size_px / 2) {
+				game.s_length--;
+				game.snake_directions.removeLast();
+				if (game.s_length <= TetrasnakonoidGame.snake_init_length_tiles) {
+					game_over(10);
+				}
 			}
 		}
 	}
@@ -2128,6 +2575,17 @@ private void prev_tetr_rot() {
 				game.next_snake_dir = 0;
 			}
 
+			int a,b;
+			if (game.hardcore) {
+				a = 0;
+				b = TetrasnakonoidGame.max_width_tiles-1;
+			}
+			else
+			{
+				a =(TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2;
+				b = a + TetrasnakonoidGame.tetris_w_tiles_easy - 1;
+			}
+
 		    int e = game.snake_directions.get(0);
 			switch (e)
 			{
@@ -2136,10 +2594,10 @@ private void prev_tetr_rot() {
 				case 2:
 					 if (game.heady >= TetrasnakonoidGame.max_height_tiles-1) game.heady = 0; else 	game.heady++; break;
 				case 3:
-					 if (game.headx <= 0) game.headx = TetrasnakonoidGame.max_width_tiles - 1; else game.headx--;
+					 if (game.headx <= a) game.headx = b; else game.headx--;
 					break;
 				case 4:
-					 if (game.headx >= TetrasnakonoidGame.max_width_tiles-1) game.headx = 0; else  game.headx++;
+					 if (game.headx >= b) game.headx = a; else  game.headx++;
 					break;
 				default:
 					break;
@@ -2147,7 +2605,7 @@ private void prev_tetr_rot() {
 			}
 			game.snake_directions.addFirst(e);
 			if ((game.headx == game.foodx) && (game.heady == game.foody)) {
-				next_food(); game.s_length++; game.scores++; jingle_jingle();
+				if (game.hardcore) {next_food(); game.s_length++; game.scores++; jingle_jingle();}
 			}
 			else {
 				game.snake_directions.removeLast();
@@ -2245,38 +2703,63 @@ private void prev_tetr_rot() {
 		return out;
 	}
 
+	private void check_easy_win() {
+		if ((!game.hardcore) && (game.got_food) && (game.kicked_back)) {
+			game.scores++;
+			next_pitch();
+		}
+	}
+
 	private void rack_ai() {
-		boolean roll = false;
-		game.rack_ai_acc+=Gdx.graphics.getDeltaTime();
-		if (game.rack_ai_acc > 0.3f) {
-			Random r = new Random();
-			if (r.nextInt() % 3 == 1) { roll = true; }
-			int max = game.vp_h - game.ai.bb.h;
-			int min = game.ai.bb.h;
-			if (game.ball.vx < 0) {
-				if (roll)
-					game.ai.target_y = min + (int) (Math.random() * ((max - min) + 1));
-
-			} else {
-				if (game.ball.x > game.vp_w/3) {
-					int x2 = game.ball.x+ (int) (2*game.ball.vx);
-					int y2 = game.ball.y+ (int) (2*game.ball.vy);
-					PointT p = lines_intersect(game.ball.x, game.ball.y, x2, y2, game.vp_w,20, game.vp_w, game.vp_h);
-
-					if (p.flag == 2) {
-						game.ai.target_y = game.vp_h/2;
-						if ((p.y < max) && (p.y > min)) game.ai.target_y = p.y;
-
-						if ((p.y > max) && (p.y - max > game.vp_h/2)) game.ai.target_y = min;
-						if ((p.y < min) && (Math.abs(p.y - min) > game.vp_h/2)) game.ai.target_y = max;
-					}
+		int max = game.vp_h - game.ai.bb.h;
+		int min = game.ai.bb.h;
+		game.rack_ai_acc += Gdx.graphics.getDeltaTime();
+		if (game.hardcore) {
+			boolean roll = false;
+			if (game.rack_ai_acc > 0.3f) {
+				Random r = new Random();
+				if (r.nextInt() % 3 == 1) {
+					roll = true;
 				}
-				else {
+				if (game.ball.vx < 0) {
 					if (roll)
 						game.ai.target_y = min + (int) (Math.random() * ((max - min) + 1));
+
+				} else {
+					if (game.ball.x > game.vp_w / 3) {
+						int x2 = game.ball.x + (int) (2 * game.ball.vx);
+						int y2 = game.ball.y + (int) (2 * game.ball.vy);
+						PointT p = lines_intersect(game.ball.x, game.ball.y, x2, y2, game.vp_w, 20, game.vp_w, game.vp_h);
+
+						if (p.flag == 2) {
+							game.ai.target_y = game.vp_h / 2;
+							if ((p.y < max) && (p.y > min)) game.ai.target_y = p.y;
+
+							if ((p.y > max) && (p.y - max > game.vp_h / 2)) game.ai.target_y = min;
+							if ((p.y < min) && (Math.abs(p.y - min) > game.vp_h / 2))
+								game.ai.target_y = max;
+						}
+					} else {
+						if (roll)
+							game.ai.target_y = min + (int) (Math.random() * ((max - min) + 1));
+					}
 				}
+				game.rack_ai_acc = 0.0f;
 			}
-			game.rack_ai_acc = 0.0f;
+		}
+		else {
+			if (game.rack_ai_acc > 0.3f) {
+				if (game.easy_mode_state == 0) {
+					game.ai.target_y = min + (int) (Math.random() * ((max - min) + 1));
+					game.pc.target_y = min + (int) (Math.random() * ((max - min) + 1));
+				}
+				game.rack_ai_acc = 0.0f;
+			}
+
+			if (game.easy_mode_state == 0) {
+				game.pitch_acc += Gdx.graphics.getDeltaTime();
+				if (game.pitch_acc >= game.pitch_delay) {game.easy_mode_state = 1; game.pitch_acc =0;}
+			}
 		}
 	}
 	private PointF snake_to_render(int x, int y)
@@ -2289,6 +2772,16 @@ private void prev_tetr_rot() {
 
 	private PointT index_to_snake_xy(int id)
 	{
+		int a,b;
+		if (game.hardcore) {
+			a = 0;
+			b = TetrasnakonoidGame.max_width_tiles-1;
+		}
+		else
+		{
+			a =(TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2;
+			b = a + TetrasnakonoidGame.tetris_w_tiles_easy - 1;
+		}
 		PointT out = new PointT(game.headx,game.heady);
 		if (id == 0) return out;
 		for (int i =1;i<=id; ++i) {
@@ -2298,10 +2791,10 @@ private void prev_tetr_rot() {
 				case 2:
 					if (out.y <= 0) out.y = TetrasnakonoidGame.max_height_tiles - 1; else out.y--; break;
 				case 3:
-					if (out.x >= TetrasnakonoidGame.max_width_tiles - 1) out.x = 0; else out.x++;
+					if (out.x >= b) out.x = a; else out.x++;
 					break;
 				case 4:
-					if (out.x <= 0 ) out.x =TetrasnakonoidGame.max_width_tiles - 1; else out.x--;
+					if (out.x <= a ) out.x = b; else out.x--;
 					break;
 				default:
 					break;
@@ -2387,6 +2880,31 @@ private void prev_tetr_rot() {
 		}
 		return flag;
 	}
+
+	private boolean check_line_empty(int id)
+	{
+		boolean flag = true;
+		for (int i =0; i<game.tetris_w_tiles;++i) {
+			if (game.blocks[id][i] == 1) { flag = false; return flag; }
+		}
+		return flag;
+	}
+
+	private int find_middle_line_index() {
+		int mli1 = TetrasnakonoidGame.max_height_tiles/2;
+
+		for (int i=0;i<mli1; ++i) {
+			if (check_line_empty(i)) mli1 = i;
+		}
+		int mli2 = TetrasnakonoidGame.max_height_tiles/2;
+
+		for (int i=TetrasnakonoidGame.max_height_tiles - 1; i>=mli2; --i) {
+			if (check_line_empty(i)) mli2 = i;
+		}
+
+		return Math.min(mli1,mli2);
+	}
+
 	private boolean clear_lines()
 	{
 		boolean flag = true;
@@ -2399,41 +2917,127 @@ private void prev_tetr_rot() {
 			for (int i =0; i<game.tetris_w_tiles;++i) {
 				game.blocks[lineid][i] = 0;
 			}
-			for (int i =lineid; i<game.tetris_h_tiles-1;++i) {
-				for (int j = 0; j < game.tetris_w_tiles; ++j) {
-						game.blocks[i][j] = game.blocks[i+1][j];
+			if (game.hardcore) {
+				for (int i = lineid; i < game.tetris_h_tiles - 1; ++i) {
+					for (int j = 0; j < game.tetris_w_tiles; ++j) {
+						game.blocks[i][j] = game.blocks[i + 1][j];
+					}
 				}
 			}
-			game.scores+=TetrasnakonoidGame.super_scores; jingle_jingle();
+			else {
+				int mli = find_middle_line_index();
+				if (game.tetris_reverse_gravity) {
+					for (int i = mli; i < lineid - 1; ++i) {
+						for (int j = 0; j < game.tetris_w_tiles; ++j) {
+							game.blocks[i][j] = game.blocks[i - 1][j];
+						}
+					}
+				}
+				else {
+					for (int i = lineid; i < mli - 1; ++i) {
+						for (int j = 0; j < game.tetris_w_tiles; ++j) {
+							game.blocks[i][j] = game.blocks[i + 1][j];
+						}
+					}
+				}
+			}
+			if (game.hardcore)
+				game.scores+=TetrasnakonoidGame.super_scores; jingle_jingle();
 		}
 		return flag;
 	}
+
+	private void tetr_inc() {
+		if (game.hardcore) { game.tetramino_y++; return; }
+
+		if (game.tetris_reverse_gravity) { game.tetramino_y--;} else {game.tetramino_y++;}
+	}
+
+	private void tetr_dec() {
+		if (game.hardcore) { game.tetramino_y--; return; }
+
+		if (game.tetris_reverse_gravity) { game.tetramino_y++;} else {game.tetramino_y--;}
+	}
+
+	private void check_easy_tetris_lose(){
+		boolean flag = true;
+		for (int i=0;i<game.tetris_w_tiles; i++) {
+			flag = true;
+			for (int j=0;j<game.tetris_h_tiles; j++) {
+				if (game.blocks[j][i] == 0) flag = false;
+			}
+			if (flag) { game_over(11); return;}
+		}
+	}
+
 	private void animate_tetris(){
 		game.tetris_ani_acc+=Gdx.graphics.getDeltaTime();
 		int speed = game.tetris_speed_tiles_per_sec + game.difficulty_t;
 		if (game.tetris_ani_acc > 1/(float) speed) {
+			if ((game.hardcore) || (game.easy_mode_state==2)) {
+				tetr_dec();
+				clear_tetramino();
 
-			game.tetramino_y--;
-            clear_tetramino();
-
-            put_tetramino(game.tetramino_type, game.tetramino_rot, game.tetramino_x, game.tetramino_y);
-
-			if (check_tetramino()) {
-				unput_tetramino();
-				game.tetramino_y++;
 				put_tetramino(game.tetramino_type, game.tetramino_rot, game.tetramino_x, game.tetramino_y);
-				tetramino_to_block();
-                while(clear_lines()){;}
-				next_tetramino();
-                game.scores++; jingle_jingle();
+
+				if (check_tetramino()) {
+					unput_tetramino();
+					tetr_inc();
+					put_tetramino(game.tetramino_type, game.tetramino_rot, game.tetramino_x, game.tetramino_y);
+					tetramino_to_block();
+					while (clear_lines()) {
+						;
+					}
+					if (game.hardcore) {
+						next_tetramino();
+						game.scores++;
+						jingle_jingle();
+					}
+					else {
+						game.easy_mode_state = 3;
+						if (!game.got_food) game_over(12);
+					}
+				}
+				if (game.tetramino_y == 0) {
+					if (game.hardcore) {
+						tetramino_to_block();
+						while (clear_lines()) {
+							;
+						}
+						next_tetramino();
+						game.scores++;
+						jingle_jingle();
+					}
+					else if (!game.tetris_reverse_gravity) {
+						tetramino_to_block();
+						while (clear_lines()) {
+							;
+						}
+						game.easy_mode_state = 3;
+						if (!game.got_food) game_over(13);
+					}
+				}
+
+				int height = get_tetramino_height(game.tetramino_type, game.tetramino_rot) + game.tetramino_y;
+				if ((!game.hardcore) && (height == game.tetris_h_tiles) && (game.tetris_reverse_gravity))
+				{
+					tetramino_to_block();
+					while (clear_lines()) {
+						;
+					}
+					game.easy_mode_state = 3;
+					if (!game.got_food) game_over(14);
+				}
+
+				if (game.hardcore) {
+					for (int i = 0; i < game.tetris_w_tiles; ++i) {
+						if (game.blocks[game.tetris_h_tiles][i] == 1) game_over(15);
+					}
+				}
+				else {
+					check_easy_tetris_lose();
+				}
 			}
-			if (game.tetramino_y == 0) {tetramino_to_block(); while(clear_lines()){;} next_tetramino(); game.scores++; jingle_jingle();}
-
-
-			for (int i =0;i<game.tetris_w_tiles; ++i) {
-				if (game.blocks[game.tetris_h_tiles][i] == 1) game_over();
-			}
-
 			game.tetris_ani_acc = 0.0f;
 		}
 	}
@@ -2442,9 +3046,169 @@ private void prev_tetr_rot() {
 	{
 		PointF p = new PointF();
 		p.y = i*game.tile_size_px + game.vp_y;
-		p.x = j*game.tile_size_px + game.vp_x+15*game.tile_size_px;
+		int x = (TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2;
+		p.x = j*game.tile_size_px + game.vp_x+x*game.tile_size_px;
 		return p;
 	}
+
+	private void handlekbdinput() {
+		if (Gdx.app.getType() == Application.ApplicationType.iOS) return;
+		if (Gdx.app.getType() == Application.ApplicationType.Android) return;
+		if(Gdx.input.isKeyPressed(Input.Keys.W)){
+			if (game.hardcore) {
+				int orientation = game.snake_directions.getFirst();
+				if ((orientation == 3) || (orientation == 4)) {
+					game.next_snake_dir = 2;
+				}
+			}
+			else {
+				if (game.easy_mode_state <=1) {
+					int orientation = game.snake_directions.getFirst();
+					if ((orientation == 3) || (orientation == 4)) {
+						game.next_snake_dir = 2;
+					}
+				}
+
+				if (game.easy_mode_state>=2) {
+					int max = game.vp_h - game.pc.bb.h;
+					if (game.pc_pitcher) {
+						game.ai.target_y = max;
+					}
+					else {
+						game.pc.target_y = max;
+					}
+				}
+			}
+		}
+
+		if(Gdx.input.isKeyPressed(Input.Keys.S)){
+			if (game.hardcore) {
+				int orientation = game.snake_directions.getFirst();
+				if ((orientation == 3) || (orientation == 4)) {
+					game.next_snake_dir = 1;
+				}
+			}
+			else {
+				if (game.easy_mode_state <=1) {
+					int orientation = game.snake_directions.getFirst();
+					if ((orientation == 1) || (orientation == 2)) {
+						game.next_snake_dir = 3;
+					}
+				}
+				if (game.easy_mode_state==2) {
+					if (game.tetramino_x == 0) return;
+					boolean left = true;
+					boolean flag = check_tetramino_move(left);
+					if (flag) game.tetramino_x--;
+				}
+			}
+		}
+		if(Gdx.input.isKeyPressed(Input.Keys.A)){
+			if (game.hardcore) {
+				int orientation = game.snake_directions.getFirst();
+				if ((orientation == 1) || (orientation == 2)) {
+					game.next_snake_dir = 3;
+				}
+			}
+			else {
+				if (game.easy_mode_state <=1) {
+					int orientation = game.snake_directions.getFirst();
+					if ((orientation == 3) || (orientation == 4)) {
+						game.next_snake_dir = 1;
+					}
+				}
+
+				if (game.easy_mode_state>=2) {
+					int min = game.pc.bb.h;
+					if (game.pc_pitcher) {
+						game.ai.target_y = min;
+					}
+					else {
+						game.pc.target_y = min;
+					}
+				}
+			}
+		}
+		if(Gdx.input.isKeyPressed(Input.Keys.D)){
+			if (game.hardcore) {
+				int orientation = game.snake_directions.getFirst();
+				if ((orientation == 1) || (orientation == 2)) {
+					game.next_snake_dir = 4;
+				}
+			}
+			else {
+				if (game.easy_mode_state <=1) {
+					int orientation = game.snake_directions.getFirst();
+					/* Vertical */
+					if ((orientation == 1) || (orientation == 2)) {
+						game.next_snake_dir = 4;
+					}
+				}
+
+				if (game.easy_mode_state==2) {
+					int width = get_tetramino_width(game.tetramino_type, game.tetramino_rot);
+					if (width + game.tetramino_x > game.tetris_w_tiles - 1) return;
+
+					boolean flag = check_tetramino_move(false);
+					if ((flag))
+						game.tetramino_x++;
+				}
+			}
+		}
+		if(Gdx.input.isKeyPressed(Input.Keys.Q)){
+			if (game.hardcore) {
+				if (game.tetramino_x == 0) return;
+				boolean left = true;
+				boolean flag = check_tetramino_move(left);
+				if (flag) game.tetramino_x--;
+			}
+		}
+		if(Gdx.input.isKeyPressed(Input.Keys.E)){
+			if (game.hardcore) {
+				int width = get_tetramino_width(game.tetramino_type, game.tetramino_rot);
+				if (width + game.tetramino_x > game.tetris_w_tiles - 1) return;
+
+				boolean flag = check_tetramino_move(false);
+				if ((flag))
+					game.tetramino_x++;
+			}
+		}
+		if(Gdx.input.isKeyPressed(Input.Keys.J)){
+			if (game.hardcore) {
+				int min = game.pc.bb.h;
+				game.pc.target_y = min;
+
+			}
+		}
+		if(Gdx.input.isKeyPressed(Input.Keys.K)){
+			if (game.hardcore) {
+				int max = game.vp_h - game.pc.bb.h;
+				game.pc.target_y = max;
+			}
+		}
+		if(Gdx.input.isKeyPressed(Input.Keys.SPACE)){
+			if (game_state ==0) {
+				if (!ask_username.username.equals("none")) player_name = ask_username.username;
+				new_game();
+			}
+			else {
+				if (!game_over_flag) {
+					if ((game.easy_mode_state == 2) || (game.hardcore)) {
+						if (check_tetramino_rot()) next_tetr_rot();
+					}
+				}
+			}
+			if (game_over_flag) {
+				if (TimeUtils.millis() - last_game_over_time > 2000) {
+					first_try = false;
+					game_state = 0;
+					Gdx.input.setInputProcessor(ui);
+				}
+			}
+		}
+
+	}
+
 
 	private  void render_game(boolean logic) {
 
@@ -2463,11 +3227,14 @@ private void prev_tetr_rot() {
 		shapeRenderer.setColor(game.s_color);
 		shapeRenderer.rect(game.vp_x, game.vp_y,  game.vp_w, game.vp_h);
 
-		shapeRenderer.circle(spr_food.getX() + spr_food.getWidth()/2, spr_food.getY() + spr_food.getHeight()/2, game.snake_hunger);
+		if (game.hardcore)
+		{shapeRenderer.circle(spr_food.getX() + spr_food.getWidth()/2, spr_food.getY() + spr_food.getHeight()/2, game.snake_hunger);}
 
 		shapeRenderer.end();
 		Gdx.gl.glLineWidth(1);
 		if (logic) {
+			handlekbdinput();
+			check_easy_win();
 			rack_ai();
 			coll_resolve();
 			animate_ball();
@@ -2497,9 +3264,11 @@ private void prev_tetr_rot() {
 		spr_ai_racket.draw(batch);
 	    spr_ball.draw(batch);
         if (game.has_lulz_ball) spr_lulz_ball.draw(batch);
+		if ((game.easy_mode_state == 0) && (!game.hardcore)) spr_false_ball.draw(batch);
 
 		PointF p;
 		PointT p2;
+		if ((game.hardcore) || (game.easy_mode_state < 2)) {
 			for (int i = 0; i < game.s_length; ++i) {
 				if (i == 0) {
 
@@ -2534,9 +3303,12 @@ private void prev_tetr_rot() {
 				}
 
 			}
+		}
+		if ((game.hardcore) || ((game.easy_mode_state == 2) && (!game.got_food))) {
 			p = snake_to_render(game.foodx, game.foody);
 			spr_food.setPosition(p.x, p.y);
 			spr_food.draw(batch);
+		}
 
 		for (int i = 0; i < game.tetris_h_tiles; ++i)
 			for (int j = 0; j < game.tetris_w_tiles; ++j){
@@ -2571,6 +3343,7 @@ private void prev_tetr_rot() {
 		batch.begin();
 		explosion.update(Gdx.graphics.getDeltaTime());
 		explosion.draw(batch);
+		if (game.hardcore) hardcoremark.draw(batch);
 		batch.end();
 		gameover.draw();
 
@@ -2760,6 +3533,10 @@ class TetrasnakonoidGame
 	/* Easy mode is for kids actually. Real men are HARDCORE ONLY or die trying.
 	*  Real men don't do vidya? Huh? Fuck off friendo. THIS IS TETRASNAKONOID!!1111 */
 	public boolean hardcore = false;
+	public int easy_mode_state = 0; /* 0 - pitch preparation 1 - snake catch the ball 2 - tetris and rack*/
+	public float pitch_delay = 1.5f;
+	public float pitch_acc =0;
+	public boolean pitch_out = false;
 
 	public static final int max_width_tiles = 40;
 	public static final int max_height_tiles = 20;
@@ -2773,13 +3550,14 @@ class TetrasnakonoidGame
 	Rect[] wall;
 	Racket pc, ai;
 	public static final int racket_speed_tiles_sec = 7;
-	Ball ball, lulz_ball;
+	Ball ball, lulz_ball, false_ball;
 	int difficulty_a;
 	public Color a_color;
 	float rack_ai_acc;
 	boolean has_lulz_ball;
 	boolean pc_turn;
 	boolean pc_pitcher;
+	boolean kicked_back = false;
 
 	public static final int snake_w_tiles_easy = 18;
 	public static final int snake_h_tiles_easy = max_height_tiles;
@@ -2788,6 +3566,7 @@ class TetrasnakonoidGame
 	public int snake_w_tiles = 10;
 	public int snake_h_tiles = 20;
 
+	public static final int snake_init_length_tiles_easy = 3;
 	public static final int snake_init_length_tiles = 4;
 	public static final int snake_speed_tiles_per_sec = 5;
 	int s_length;
@@ -2806,6 +3585,7 @@ class TetrasnakonoidGame
 	public static final int tetris_h_tiles_easy = 20;
 	public static final int tetris_w_tiles_hardcore = 10;
 	public static final int tetris_h_tiles_hardcore = 20;
+	public Rect easy_tetris_rect;
 
 	public int tetris_w_tiles = 10;
 	public int tetris_h_tiles = 20;
@@ -2816,6 +3596,8 @@ class TetrasnakonoidGame
 	int tetramino_x;
 	int tetramino_y;
 	float tetris_ani_acc;
+	public boolean tetris_reverse_gravity = false;
+	public boolean got_food = true;
 
 	int difficulty_t;
 	Color t_color;
