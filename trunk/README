@@ -1,0 +1,13 @@
+protip: you can't
+Crazy libGDX game where you must play Snake Tetris and Arcanoid simultaneously.
+It's challengable easy to learn hard to master timekiller and frustration generator like FlappyBird or even better.
+Expect serious butthurt while playing this.
+
+If you really want to build it yourself make dummy libgdx project called "Tetrasnakonoid" with classpath com.tetranakonoid.game
+Then replace source code file in the core folder and copy assets folder to /android/assets and /core/assets in your newly created 
+libgdx project folder. After that build it on all html, desktop, ios, android targets with default build.gradle with Android Studio. 
+
+Tested libGDX version is 1.9.8.
+
+
+

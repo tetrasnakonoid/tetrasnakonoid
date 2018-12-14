@@ -1,9 +1,12 @@
 /*
+ *  Это что за покемон? Тетраснэйконоид.
+ *  Или то самое чувство когда стал настолько тонким что
+ *  сам уже не можешь отличить собственный троллинг от реальности.
  *  Даже не спрашивайте что я курил, чтобы наговнокодить это.
  *  Энтерпрайз на Яве. Покрытие юнит-тестами.
  *  Кукарек<кококо> кукарек = new Кукарек<кококо>;
  *  85 гигабайт памяти должно хватить АХХАХААХАХ
- *  В конце концов я просто охуевающий байтослесарь.
+ *  В конце концов я простой охуевающий байтослесарь.
  */
 /* C is better for me than Java. Sorry for this mess. */
 package com.tetrasnakonoid.game;
@@ -31,6 +34,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.ImageButton;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.Value;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
@@ -49,6 +53,9 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	public static final String version = "v9000.1";
 	public static final String corporation = "One Man Company That Makes Everything";
 	public static final String mailto = "fuck@tetrasnakonoid.ru";
+	
+	public static final int favourite_width = 1920;	
+	public static final int favourite_height = 1080;
 
 	private ShapeRenderer shapeRenderer;
 
@@ -88,6 +95,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private int total_ball_frames = 0;
 	private int current_ball_frame = 0;
 	private float ball_animation_acc = 0;
+	private float br_angle = 0;
 
 	private Texture rack_control;
 	private Drawable drw_rack;
@@ -107,7 +115,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private Drawable drw_tetr_move, drw_tetr_rot;
 	private ImageButton btn_tetr_move, btn_tetr_rot;
 
-	private Texture gamepad_arrow, gamepad_rot;
+	private Texture gamepad_up, gamepad_down, gamepad_right, gamepad_left, gamepad_rot;
 	private Drawable drw_gamepadup, drw_gamepaddown, drw_gamepadleft, drw_gamepadright,  drw_gamepadrot;
 	private ImageButton btn_gamepadup, btn_gamepaddown, btn_gamepadleft, btn_gamepadright, btn_gamepadrot;
 
@@ -124,6 +132,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private Drawable drw_game_over_back, drw_sharefb, drw_sharetw, drw_sharevk, drw_sharegh;
 	private ImageButton btn_game_over_back, btn_sharefb, btn_sharetw, btn_sharevk, btn_sharegh;
 	private Sprite hardcoremark;
+	private Image logo;
 
 	private BitmapFont fnt_game_over;
 	private Label lbl_scores_final, lbl_quote_final;
@@ -131,6 +140,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 
 	private ParticleEffect explosion;
 
+	private Table credits_layout;
 	private Label lbl_credits;
 	private Texture credits_quit;
 	private Drawable drw_credits_quit;
@@ -190,6 +200,8 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 
 	public long desktop_state_timeout = 0;
 
+	private boolean do_resize_next_frame = false;
+
 	private float
 	todeg(float src) {
 		float pi = (float) Math.PI;
@@ -217,9 +229,10 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		return new Color(r, g, b, 1);
 	}
 
-	private void detect_tile_size() {
-		int a = Gdx.graphics.getHeight() / TetrasnakonoidGame.max_height_tiles;
-		int b = Gdx.graphics.getWidth() / TetrasnakonoidGame.max_width_tiles;
+	private void detect_tile_size(int h, int w) {
+		if ((h==0) || (w==0)) return;
+		int a = h / TetrasnakonoidGame.max_height_tiles;
+		int b = w / TetrasnakonoidGame.max_width_tiles;
 
 		game.tile_size_px = Math.min(a, b);
 		if (game.tile_size_px % 2 == 1) game.tile_size_px -= 1;
@@ -229,8 +242,10 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		game.vp_h = game.tile_size_px * TetrasnakonoidGame.max_height_tiles;
 		game.vp_w = game.tile_size_px * TetrasnakonoidGame.max_width_tiles;
 
-		game.vp_x = (Gdx.graphics.getWidth() - game.vp_w) / 2;
-		game.vp_y = (Gdx.graphics.getHeight() - game.vp_h) / 2;
+		game.vp_x = (w - game.vp_w) / 2;
+		game.vp_y = (h - game.vp_h) / 2;
+
+		if (DEBUG) {Gdx.app.debug(LOG_TAG, "VP X: " + String.valueOf(game.vp_x) + "VP Y: " + String.valueOf(game.vp_y) + "VP H: " + String.valueOf(game.vp_h) + "VP W: " + String.valueOf(game.vp_w)); }
 	}
 
 	private void set_random_colors() {
@@ -240,14 +255,9 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	}
 
 	private void init_pc_racket() {
-		spr_pc_racket = new Sprite(racket, TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.racket_length_tiles * TetrasnakonoidGame.sprite_tile_size_px);
 		spr_pc_racket.setColor(game.a_color);
-		spr_pc_racket.setOriginCenter();
-		spr_pc_racket.setSize(1.0f*game.tile_size_px, TetrasnakonoidGame.racket_length_tiles * game.tile_size_px);
 
 
-		game.pc = new Racket();
-		game.pc.bb = new Rect();
 		game.pc.v = TetrasnakonoidGame.racket_speed_tiles_sec*game.tile_size_px;
 
 		spr_pc_racket.getHeight();
@@ -264,21 +274,14 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	}
 
 	private void init_ai_racket() {
-		spr_ai_racket = new Sprite(racket, TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.racket_length_tiles * TetrasnakonoidGame.sprite_tile_size_px);
 		spr_ai_racket.setColor(game.a_color);
-		spr_ai_racket.setOriginCenter();
-		spr_ai_racket.setSize(1.0f*game.tile_size_px, TetrasnakonoidGame.racket_length_tiles * game.tile_size_px);
 
-
-		game.ai = new Racket();
-		game.ai.bb = new Rect();
 		game.ai.v = TetrasnakonoidGame.racket_speed_tiles_sec*game.tile_size_px;
 
 		game.ai.bb.h = TetrasnakonoidGame.racket_length_tiles * game.tile_size_px / 2;
 		game.ai.bb.w = game.tile_size_px / 2;
 
 		game.ai.bb.x = game.vp_w - 3*game.tile_size_px/2;
-
 		int max = game.vp_h - game.ai.bb.h;
 		int min = game.ai.bb.h;
 		game.ai.bb.y = min + (int) (Math.random() * ((max - min) + 1));
@@ -372,31 +375,19 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		game.ball.last_col = TimeUtils.millis();
 		game.ball.last_col_x = -50;
 		game.ball.last_col_y = -50;
+		next_easy_snake();
 	}
 
 	private void init_ball() {
-		game.ball = new Ball();
-		game.false_ball = new Ball();
 		if (game.hardcore)
 			next_ball();
 		else
 			next_pitch();
 
-		spr_ball = new Sprite(ball_frames[0]);
-		spr_ball.setOriginCenter();
 		spr_ball.setColor(game.a_color);
-		spr_ball.setSize(1.2f*game.k * TetrasnakonoidGame.sprite_tile_size_px, 1.2f*TetrasnakonoidGame.sprite_tile_size_px * game.k);
-
-        spr_lulz_ball = new Sprite(ball_frames[0]);
-        spr_lulz_ball.setOriginCenter();
         spr_lulz_ball.setColor(game.a_color);
-        spr_lulz_ball.setSize(1.2f*game.k * TetrasnakonoidGame.sprite_tile_size_px, 1.2f*TetrasnakonoidGame.sprite_tile_size_px * game.k);
-
-
-		spr_false_ball = new Sprite(ball_frames[0]);
-		spr_false_ball.setOriginCenter();
 		spr_false_ball.setColor(game.a_color);
-		spr_false_ball.setSize(1.2f*game.k * TetrasnakonoidGame.sprite_tile_size_px, 1.2f*TetrasnakonoidGame.sprite_tile_size_px * game.k);
+
 	}
 
 	private void init_arcanoid() {
@@ -570,7 +561,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 
 		game.s_length = TetrasnakonoidGame.snake_init_length_tiles_easy;
 
-
+		game.snake_directions.clear();
 		for (int i=0;i<game.s_length;i++) {
 			game.snake_directions.add(rd);
 		}
@@ -584,11 +575,9 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		game.s_length = TetrasnakonoidGame.snake_init_length_tiles;
 		int index = 0;
 
-		TextureRegion fr = new TextureRegion(food,TetrasnakonoidGame.sprite_tile_size_px*(game.food_id),0 , TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px);
-		spr_food = new Sprite(fr);
-
 		Random r = new Random(); int rd = r.nextInt((4 - 1) + 1) + 1;
 		if (game.hardcore) {
+			game.snake_directions.clear();
 			for (int i=0;i<game.s_length;i++) {
 				game.snake_directions.add(rd);
 			}
@@ -602,29 +591,11 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		}
 
 
-
 		spr_food.setColor(game.s_color);
-		spr_food.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k);
-
-		spr_head = new Sprite(head);
 		spr_head.setColor(game.s_color);
-		spr_head.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k);
-		spr_head.setOriginCenter();
-
-		spr_tail = new Sprite(tail);
 		spr_tail.setColor(game.s_color);
-		spr_tail.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k);
-		spr_tail.setOriginCenter();
-
-		spr_body = new Sprite(body);
 		spr_body.setColor(game.s_color);
-		spr_body.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k);
-		spr_body.setOriginCenter();
-
-		spr_anglebody = new Sprite(anglebody);
 		spr_anglebody.setColor(game.s_color);
-		spr_anglebody.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k);
-		spr_anglebody.setOriginCenter();
 
 
 	}
@@ -886,30 +857,22 @@ private void prev_tetr_rot() {
 		game.difficulty_t = 0;
 		game.tetris_ani_acc  = 0;
 
-		game.blocks = new int[game.tetris_h_tiles+4][game.tetris_w_tiles+4];
 		for (int i =0; i < game.tetris_h_tiles+4; ++i) {
-			for (int j = 0; j < game.tetris_w_tiles + 4; ++j) {
-				game.blocks[i][j] = 0;
-			}
+		   for (int j = 0; j < game.tetris_w_tiles + 4; ++j) {
+			   game.blocks[i][j] = 0;
+		   }
 		}
 		game.next_tetramino_dir = 0;
 		if (game.hardcore) next_tetramino();
 
-		spr_tetrotile = new Sprite(tetrotile);
 		spr_tetrotile.setColor(game.t_color);
-		spr_tetrotile.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k);
-		spr_tetrotile.setOriginCenter();
 
-		spr_tetroborderl = new Sprite(tetroborder);
 		spr_tetroborderl.setColor(game.t_color);
-		spr_tetroborderl.setSize(5, game.vp_h);
+		spr_tetroborderr.setColor(game.t_color);
 		int lbx = (TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2;
 		spr_tetroborderl.setPosition(lbx* game.tile_size_px + game.vp_x, game.vp_y);
-
-		spr_tetroborderr = new Sprite(tetroborder);
-		spr_tetroborderr.setColor(game.t_color);
-		spr_tetroborderr.setSize(5, game.vp_h);
 		spr_tetroborderr.setPosition((lbx + game.tetris_w_tiles)  * game.tile_size_px + game.vp_x, game.vp_y);
+		btn_tetr_move.setPosition(lbx* game.tile_size_px + game.vp_x,0);
 
 	}
 
@@ -1029,7 +992,7 @@ private void prev_tetr_rot() {
 
 
 	private void game_over(int source){
-		if (DEBUG) { Gdx.app.debug(LOG_TAG, "Gameover reason: " + source); return;/* new_game();*/}
+		if (DEBUG) {Gdx.app.debug(LOG_TAG, "Gameover reason: " + source);}
 
 		game_state = 4;
 		Gdx.input.setInputProcessor(gameover);
@@ -1042,6 +1005,7 @@ private void prev_tetr_rot() {
 				fail_jingle.play(1.0f);
 		}
 
+		if (!(Gdx.app.getType() == Application.ApplicationType.WebGL))
 		save_cookies();
 
 		explosion.start();
@@ -1077,22 +1041,19 @@ private void prev_tetr_rot() {
 		if (DEBUG) {
 			Gdx.app.setLogLevel(Application.LOG_DEBUG);
 		}
+
 		if (first_try) game_state = 5; else game_state = 1;
 		game.scores = 0;
 		game_over_flag = false;
 
 		set_random_colors();
 		place_walls();
-		game.easy_tetris_rect = new Rect();
 		recalc_tile_widths();
 		game.easy_mode_state = 0;
 		init_arcanoid();
 		init_tetris();
 		init_snake();
 
-
-
-		game.lulz_ball = new Ball();
 		game.has_lulz_ball = false;
 		if (game_state == 1) {
 			if (game.hardcore)
@@ -1106,7 +1067,6 @@ private void prev_tetr_rot() {
 		last_render = TimeUtils.millis();
 		last_new_game_time = last_render;
 
-		if (DEBUG) game_state = 1;
 	}
 
 	private void init_music() {
@@ -1122,18 +1082,13 @@ private void prev_tetr_rot() {
 	}
 	private void init_helpscreen(){
 		spr_help_background = new Sprite(help_background);
-		spr_help_background.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 		spr_help_overlay = new Sprite(help_overlay);
-		spr_help_overlay.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-
 		spr_easy_help_overlay = new Sprite(easy_help_overlay);
-		spr_easy_help_overlay.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-
 		drw_help_quit = new TextureRegionDrawable(new TextureRegion(help_quit));
 
 		btn_help_quit = new ImageButton(drw_help_quit);
 		btn_help_quit.setPosition(0,0);
-		btn_help_quit.setSize(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
 
 		help = new Stage(viewport);
 		help.addActor(btn_help_quit);
@@ -1157,7 +1112,6 @@ private void prev_tetr_rot() {
 		drw_game_over_back = new TextureRegionDrawable(new TextureRegion(game_over_quit));
 		btn_game_over_back = new ImageButton(drw_game_over_back);
 		btn_game_over_back.setPosition(0,0);
-		btn_game_over_back.setSize(Gdx.graphics.getWidth(),Gdx.graphics.getHeight());
 
 		drw_sharefb = new TextureRegionDrawable(new TextureRegion(sharefb));
 		btn_sharefb = new ImageButton(drw_sharefb);
@@ -1186,26 +1140,13 @@ private void prev_tetr_rot() {
 		lbl_quote_final.scaleBy(1.5f);
 
 		TextureRegionDrawable drw_logo = new TextureRegionDrawable(new TextureRegion(header));
-		img_header = new Image(drw_logo);
-		Image logo = new Image(header);
+		logo = new Image(drw_logo);
 
 		hardcoremark = new Sprite(hardcoredown);
-		hardcoremark.setPosition(Gdx.graphics.getWidth()/2 - hardcoredown.getWidth()/2, Gdx.graphics.getHeight()/2 - hardcoredown.getHeight()/2);
 		hardcoremark.setAlpha(0.5f);
 
 		gameover = new Stage(viewport);
 		game_over_layout = new Table();
-		game_over_layout.setFillParent(true);
-		game_over_layout.add(logo).center().colspan(4).pad(10).spaceBottom(100);
-		game_over_layout.row();
-		game_over_layout.add(lbl_scores_final).center().colspan(4).pad(10).spaceBottom(100);
-		game_over_layout.row();
-		game_over_layout.add(lbl_quote_final).center().colspan(4).pad(10).spaceBottom(100);
-		game_over_layout.row();
-		game_over_layout.add(btn_sharefb).pad(10);
-		game_over_layout.add(btn_sharetw).pad(10);
-		game_over_layout.add(btn_sharevk).pad(10);
-		game_over_layout.add(btn_sharegh).pad(10);
 
 		gameover.addActor(btn_game_over_back);
 		gameover.addActor(game_over_layout);
@@ -1271,14 +1212,13 @@ private void prev_tetr_rot() {
 
 		drw_credits_quit = new TextureRegionDrawable(new TextureRegion(credits_quit));
 		btn_credits_quit = new ImageButton(drw_credits_quit);
-		btn_credits_quit.setTransform(true);
-		btn_credits_quit.setScale(256.0f);
+		btn_credits_quit.setPosition(0,0);
+
 
 
 		credits = new Stage(viewport);
-		Table credits_layout = new Table();
-		credits_layout.setFillParent(true);
-		credits_layout.add(lbl_credits).center().colspan(1).pad(10);
+		credits_layout = new Table();
+
 
 
 		credits.addActor(credits_layout);
@@ -1342,13 +1282,13 @@ private void prev_tetr_rot() {
 	}
 	private void init_ingame() {
 		ingame = new Stage(viewport);
-		detect_tile_size();
+		detect_tile_size(Gdx.graphics.getHeight(),Gdx.graphics.getWidth());
 		shapeRenderer = new ShapeRenderer();
 
 		drw_rack = new TextureRegionDrawable(new TextureRegion(rack_control));
 		btn_rack = new ImageButton(drw_rack);
 		btn_rack.setPosition(0,0);
-		btn_rack.setSize(game.vp_x + game.tile_size_px*5, Gdx.graphics.getHeight());
+
 		btn_rack.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
@@ -1365,9 +1305,8 @@ private void prev_tetr_rot() {
 
 		drw_snake_ctll = new TextureRegionDrawable(new TextureRegion(snake_control));
 		btn_snakel = new ImageButton(drw_snake_ctll);
-		btn_snakel.setPosition(game.vp_x + game.tile_size_px*2,0);
-		int scw = (game.vp_w - game.tile_size_px*4 - game.tile_size_px*game.tetris_w_tiles)/2;
-		btn_snakel.setSize(scw, Gdx.graphics.getHeight());
+
+
 
 		btn_snakel.addListener(new ClickListener() {
 			@Override
@@ -1406,8 +1345,9 @@ private void prev_tetr_rot() {
 
 		drw_snake_ctlr = new TextureRegionDrawable(new TextureRegion(snake_control));
 		btn_snaker = new ImageButton(drw_snake_ctlr);
-		btn_snaker.setPosition(game.vp_x + game.tile_size_px*2+scw+ game.tile_size_px*game.tetris_w_tiles,0);
-		btn_snaker.setSize(scw, Gdx.graphics.getHeight());
+
+
+
 		btn_snaker.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
@@ -1442,16 +1382,13 @@ private void prev_tetr_rot() {
 			}
 		});
 
-		int lbx = (TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2;
 		drw_tetr_move = new TextureRegionDrawable(new TextureRegion(tetr_move));
 		btn_tetr_move = new ImageButton(drw_tetr_move);
-		btn_tetr_move.setPosition(lbx* game.tile_size_px + game.vp_x,0);
-		btn_tetr_move.setSize(game.tetris_w_tiles*game.tile_size_px, Gdx.graphics.getHeight());
 		btn_tetr_move.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
 				int orientation = game.snake_directions.getFirst();
-				if (y<btn_tetr_move.getHeight()/2) {
+				if (y<Gdx.graphics.getHeight()/2) {
 					if ((orientation == 3) || (orientation == 4)) {
 						game.next_snake_dir =1;
 					}
@@ -1467,8 +1404,7 @@ private void prev_tetr_rot() {
 		btn_tetr_rot = new ImageButton(drw_tetr_rot);
 
 
-		btn_tetr_rot.setPosition( Gdx.graphics.getWidth() - game.vp_x - game.tile_size_px*5,0);
-		btn_tetr_rot.setSize(game.vp_x + game.tile_size_px*5, Gdx.graphics.getHeight());
+
 		btn_tetr_rot.addListener(new ClickListener() {
 			@Override
 			public void clicked(InputEvent event, float x, float y) {
@@ -1476,46 +1412,21 @@ private void prev_tetr_rot() {
 				if (check_tetramino_rot()) next_tetr_rot();
 			}});
 
-		int gpx = TetrasnakonoidGame.max_width_tiles*game.tile_size_px - (3+3+1)*game.tile_size_px;
-		int gpy = game.tile_size_px*(1+3);
-		drw_gamepadup = new TextureRegionDrawable(new TextureRegion(gamepad_arrow));
+
+		drw_gamepadup = new TextureRegionDrawable(new TextureRegion(gamepad_up));
 		btn_gamepadup = new ImageButton(drw_gamepadup);
-		btn_gamepadup.setSize(game.tile_size_px*3, game.tile_size_px*3);
-        btn_gamepadup.setPosition(gpx, gpy + game.tile_size_px*3/2);
-        btn_gamepadup.setOrigin(game.tile_size_px*3/2);
-		btn_gamepadup.setTransform(true);
-		btn_gamepadup.setRotation(+90f);
 
-		drw_gamepaddown = new TextureRegionDrawable(new TextureRegion(gamepad_arrow));
+		drw_gamepaddown = new TextureRegionDrawable(new TextureRegion(gamepad_down));
 		btn_gamepaddown = new ImageButton(drw_gamepaddown);
-		btn_gamepaddown.setSize(game.tile_size_px*3, game.tile_size_px*3);
-        btn_gamepaddown.setPosition(gpx, gpy - game.tile_size_px*3/2);
-		btn_gamepaddown.setOrigin(game.tile_size_px*3/2);
-		btn_gamepaddown.setTransform(true);
-		btn_gamepaddown.setRotation(-90f);
 
-		drw_gamepadleft = new TextureRegionDrawable(new TextureRegion(gamepad_arrow));
+		drw_gamepadleft = new TextureRegionDrawable(new TextureRegion(gamepad_left));
 		btn_gamepadleft = new ImageButton(drw_gamepadleft);
-		btn_gamepadleft.setSize(game.tile_size_px*3, game.tile_size_px*3);
-        btn_gamepadleft.setPosition(gpx - game.tile_size_px*3/2, gpy);
-		btn_gamepadleft.setOrigin(game.tile_size_px*3/2);
-		btn_gamepadleft.setTransform(true);
-		btn_gamepadleft.setRotation(180f);
 
-		drw_gamepadright = new TextureRegionDrawable(new TextureRegion(gamepad_arrow));
+		drw_gamepadright = new TextureRegionDrawable(new TextureRegion(gamepad_right));
 		btn_gamepadright = new ImageButton(drw_gamepadright);
-		btn_gamepadright.setSize(game.tile_size_px*3, game.tile_size_px*3);
-        btn_gamepadright.setPosition(gpx + game.tile_size_px*3/2, gpy);
-		btn_gamepadright.setOrigin(game.tile_size_px*3/2);
-		btn_gamepadright.setTransform(true);
-		btn_gamepadright.setRotation(0f);
 
 		drw_gamepadrot = new TextureRegionDrawable(new TextureRegion(gamepad_rot));
 		btn_gamepadrot = new ImageButton(drw_gamepadrot);
-		btn_gamepadrot.setRotation(0f);
-		btn_gamepadrot.setSize(game.tile_size_px*5, game.tile_size_px*5);
-		btn_gamepadrot.setPosition(game.tile_size_px*2, gpy + game.tile_size_px*3/2 - game.tile_size_px*5/2);
-
 
 		btn_gamepadup.addListener(new ClickListener() {
 			@Override
@@ -1683,7 +1594,7 @@ private void prev_tetr_rot() {
 		drw_header = new TextureRegionDrawable(new TextureRegion(header));
 		img_header = new Image(drw_header);
 
-		spr_protip = new Sprite(protip, 0, 0, 426, 56);
+		spr_protip = new Sprite(protip);
 		motto_y = 60 + (float) Math.random() * (Gdx.graphics.getHeight() - 2 * 60);
 
 
@@ -1735,31 +1646,10 @@ private void prev_tetr_rot() {
 		ui = new Stage(viewport);
 
 		layout = new Table();
-		layout.setFillParent(true);
-		layout.add(img_header).center().colspan(10).pad(10);
-		layout.row();
-		layout.add(lbl_high_scores_out).center().colspan(10).pad(30);
-		layout.row();
-		layout.add(lbl_last_try_out).center().colspan(10).pad(10);
-		layout.row();
-		layout.add(btn_hardcore).center().colspan(10).pad(30);
-		layout.row();
-		layout.add(btn_help).pad(10);
-		layout.add(btn_mutesnd).pad(10);
-		layout.add(btn_mutemusic).pad(10);
-		layout.add(btn_login).pad(10);
-		layout.add(btn_rateme).pad(10).spaceRight(300);
 
 
-		layout.add(btn_halloffame).pad(10);
-		layout.add(btn_donate_usd).pad(10);
-		layout.add(btn_donate_btc).pad(10);
-		layout.add(btn_donate_ltc).pad(10);
-		layout.add(btn_donate_eth).pad(10);
 
-
-		btn_new_game.setTransform(true);
-		btn_new_game.setScale(256.0f);
+		btn_new_game.setPosition(0,0);
 		ui.addActor(btn_new_game);
 		ui.addActor(layout);
 		ui.addActor(lbl_version);
@@ -1973,7 +1863,10 @@ private void prev_tetr_rot() {
 		tetr_move  = new Texture("tetr_move.png");
 		tetr_rot = new Texture("tetr_rot.png");
 
-		gamepad_arrow = new Texture(Gdx.files.internal("gamepad_arrow.png"));
+		gamepad_up = new Texture(Gdx.files.internal("gamepad_up.png"));
+		gamepad_down = new Texture(Gdx.files.internal("gamepad_down.png"));
+		gamepad_left = new Texture(Gdx.files.internal("gamepad_left.png"));
+		gamepad_right = new Texture(Gdx.files.internal("gamepad_right.png"));
 		gamepad_rot = new Texture(Gdx.files.internal("gamepad_rot.png"));
 
 		help_background = new Texture("help_background.png");
@@ -2027,21 +1920,141 @@ private void prev_tetr_rot() {
 		}
 	}
 
+	private void init_gameobjects() {
+		game.pc = new Racket();
+		game.pc.bb = new Rect();
+
+		spr_pc_racket = new Sprite(racket, TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.racket_length_tiles * TetrasnakonoidGame.sprite_tile_size_px);
+		spr_pc_racket.setOriginCenter();
+
+		game.ai = new Racket();
+		game.ai.bb = new Rect();
+		spr_ai_racket = new Sprite(racket, TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.racket_length_tiles * TetrasnakonoidGame.sprite_tile_size_px);
+		spr_ai_racket.setOriginCenter();
+
+
+		game.ball = new Ball();
+		game.false_ball = new Ball();
+		game.lulz_ball = new Ball();
+
+		spr_ball = new Sprite(ball_frames[0]);
+		spr_ball.setOriginCenter();
+
+
+		spr_lulz_ball = new Sprite(ball_frames[0]);
+		spr_lulz_ball.setOriginCenter();
+
+
+		spr_false_ball = new Sprite(ball_frames[0]);
+		spr_false_ball.setOriginCenter();
+
+
+		game.easy_tetris_rect = new Rect();
+		int blockh = Math.max(TetrasnakonoidGame.tetris_h_tiles_easy, TetrasnakonoidGame.tetris_h_tiles_hardcore);
+		int blockw = Math.max(TetrasnakonoidGame.tetris_w_tiles_easy, TetrasnakonoidGame.tetris_w_tiles_hardcore);
+		game.blocks = new int[blockh+4][blockw+4];
+		for (int i =0; i < blockh+4; ++i) {
+			for (int j = 0; j < blockw + 4; ++j) {
+				game.blocks[i][j] = 0;
+			}
+		}
+
+		spr_tetrotile = new Sprite(tetrotile);
+		spr_tetrotile.setOriginCenter();
+
+		spr_tetroborderl = new Sprite(tetroborder);
+
+
+		spr_tetroborderr = new Sprite(tetroborder);
+
+
+		TextureRegion fr = new TextureRegion(food,TetrasnakonoidGame.sprite_tile_size_px*(game.food_id),0 , TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px);
+		spr_food = new Sprite(fr);
+
+
+		spr_head = new Sprite(head);
+
+		spr_tail = new Sprite(tail);
+
+		spr_body = new Sprite(body);
+
+		spr_anglebody = new Sprite(anglebody);
+
+	}
+
+	private void fill_layouts()
+	{
+		game_over_layout.setFillParent(true);
+		game_over_layout.setTransform(true);
+		game_over_layout.add(logo).center().colspan(4).pad(10).spaceBottom(0.1f*Gdx.graphics.getHeight());
+		game_over_layout.row();
+		game_over_layout.add(lbl_scores_final).center().colspan(4).pad(10).spaceBottom(0.1f*Gdx.graphics.getHeight());
+		game_over_layout.row();
+		game_over_layout.add(lbl_quote_final).center().colspan(4).pad(10).spaceBottom(0.1f*Gdx.graphics.getHeight());
+		game_over_layout.row().fillX();
+		game_over_layout.add(btn_sharefb).pad(10);
+		game_over_layout.add(btn_sharetw).pad(10);
+		game_over_layout.add(btn_sharevk).pad(10);
+		game_over_layout.add(btn_sharegh).pad(10);
+
+		layout.setFillParent(true);
+		layout.setTransform(true);
+		layout.add(img_header).center().colspan(10).pad(10);
+		layout.row();
+		layout.add(lbl_high_scores_out).center().colspan(10).pad(30);
+		layout.row();
+		layout.add(lbl_last_try_out).center().colspan(10).pad(10);
+		layout.row();
+		layout.add(btn_hardcore).center().colspan(10).pad(30);
+		layout.row().fillX();
+		layout.add(btn_help).pad(10).width(Value.percentWidth(.07F, layout));
+		layout.add(btn_mutesnd).pad(10).width(Value.percentWidth(.07F, layout));
+		layout.add(btn_mutemusic).pad(10).width(Value.percentWidth(.07F, layout));
+		layout.add(btn_login).pad(10).width(Value.percentWidth(.07F, layout));
+		if (Gdx.app.getType().equals(Application.ApplicationType.WebGL)) {
+			layout.add(btn_rateme).pad(10).width(Value.percentWidth(.07F, layout));
+		}
+		else {
+			layout.add(btn_rateme).pad(10).spaceRight(0.1562f*Gdx.graphics.getWidth());
+		}
+
+
+		layout.add(btn_halloffame).pad(10).width(Value.percentWidth(.07F, layout));
+		layout.add(btn_donate_usd).pad(10).width(Value.percentWidth(.07F, layout));
+		layout.add(btn_donate_btc).pad(10).width(Value.percentWidth(.07F, layout));
+		layout.add(btn_donate_ltc).pad(10).width(Value.percentWidth(.07F, layout));
+		layout.add(btn_donate_eth).pad(10).width(Value.percentWidth(.07F, layout));
+
+		credits_layout.setFillParent(true);
+		credits_layout.setTransform(true);
+		credits_layout.add(lbl_credits).center().colspan(1).pad(10);
+
+	}
+
 	@Override
 	public void create() {
 		if (DEBUG) Gdx.app.debug(LOG_TAG, "GDX ver: " + com.badlogic.gdx.Version.VERSION);
 
-		if ((!Gdx.app.getType().equals(Application.ApplicationType.Android)) ||
-		(!Gdx.app.getType().equals(Application.ApplicationType.iOS))) {
+		if ( (Gdx.app.getType().equals(Application.ApplicationType.Desktop)) ||
+		     (Gdx.app.getType().equals(Application.ApplicationType.HeadlessDesktop)) )
+		{
 			Gdx.graphics.setWindowedMode(Gdx.graphics.getDisplayMode().width,Gdx.graphics.getDisplayMode().height);
 		}
+
+		if (Gdx.app.getType().equals(Application.ApplicationType.WebGL)) {
+			Gdx.graphics.setWindowedMode(1280,720);
+		}
+
 		batch = new SpriteBatch();
 		init_textures();
 		init_music();
 		game = new TetrasnakonoidGame();
-		init_cookies();
+		if (!(Gdx.app.getType() == Application.ApplicationType.WebGL)) { init_cookies(); }
 		init_gui();
 		init_animations();
+		init_gameobjects();
+		resize_everything(Gdx.graphics.getWidth(),Gdx.graphics.getHeight());
+		fill_layouts();
 	}
 
 	private void render_gui() {
@@ -2087,6 +2100,7 @@ private void prev_tetr_rot() {
 		if (!game.hardcore)	rect_to_sprite(spr_false_ball, ball_to_rect(game.false_ball));
 
 		ball_animation_acc += Gdx.graphics.getDeltaTime();
+		br_angle+=360*Gdx.graphics.getDeltaTime(); if (br_angle>720) br_angle =0;
 
 		if (ball_animation_acc> 0.1) {
 			current_ball_frame++; if (current_ball_frame == total_ball_frames) current_ball_frame = 0;
@@ -2095,6 +2109,10 @@ private void prev_tetr_rot() {
 			if (!game.hardcore)
 			spr_false_ball.setRegion(new TextureRegion(ball,TetrasnakonoidGame.sprite_tile_size_px*current_ball_frame, 0, TetrasnakonoidGame.sprite_tile_size_px,TetrasnakonoidGame.sprite_tile_size_px));
 
+			spr_ball.setOriginCenter();
+			spr_ball.setRotation(br_angle);
+			spr_false_ball.setOriginCenter();
+			spr_false_ball.setRotation(br_angle);
 		}
 
 	}
@@ -2428,6 +2446,11 @@ private void prev_tetr_rot() {
 		game.tetramino_rot = rot;
 		game.tetramino_x = p.x;
 		game.tetramino_y = p.y;
+		int w = get_tetramino_width(game.tetramino_type, game.tetramino_rot);
+		if (game.tetramino_x + w >= game.tetris_w_tiles)
+		{
+			game.tetramino_x = game.tetris_w_tiles - w;
+		}
 		put_tetramino(game.tetramino_type, game.tetramino_rot,  game.tetramino_x, game.tetramino_y);
 
 	}
@@ -2461,10 +2484,12 @@ private void prev_tetr_rot() {
 				reflect_ball(game.ball, game.ai.bb);
 				game.pc_turn = true;
 			}
-			if (game.pc_pitcher) {
-				game.kicked_back = true;
-				reflect_ball(game.ball, game.ai.bb);
-				jingle_jingle();
+			else {
+				if (game.pc_pitcher) {
+					game.kicked_back = true;
+					reflect_ball(game.ball, game.ai.bb);
+					jingle_jingle();
+				}
 			}
 		}
 		if (rect_circle(game.pc.bb,ball_to_rect(game.ball))) {
@@ -2615,7 +2640,7 @@ private void prev_tetr_rot() {
 	private void snake_to_block()
 	{
 		PointT p;
-		for (int i = 0; i<4; i++) {
+		for (int i = 0; i<game.s_length; i++) {
 			p = snake_to_tetris(index_to_snake_xy(i));
 			if ((p.x) >= 0 && (p.x<game.tetris_w_tiles))
 			game.blocks[p.y][p.x] = 1;
@@ -2631,16 +2656,19 @@ private void prev_tetr_rot() {
 				for (int j = game.tetramino_x; j < game.tetramino_x + width; ++j) {
 					if (has_block(i, j)) {
 						if (rect_rect(snake_to_rect(game.headx, game.heady), block_to_rect(j, i))) {
+							if (game.s_length <= TetrasnakonoidGame.snake_init_length_tiles) {
+								game.s_length = TetrasnakonoidGame.snake_init_length_tiles;
+								snake_to_block();
+								game_over(7);
+							}
+
 							clear_tetramino();
 							next_tetramino();
 							game.scores += TetrasnakonoidGame.super_scores;
 							jingle_jingle();
 							game.s_length--;
 							game.snake_directions.removeLast();
-							if (game.s_length <= TetrasnakonoidGame.snake_init_length_tiles) {
-								snake_to_block();
-								game_over(7);
-							}
+
 						}
 					}
 				}
@@ -2858,8 +2886,14 @@ private void prev_tetr_rot() {
 	}
 
 	private void check_easy_win() {
-		if ((!game.hardcore) && (game.got_food) && (game.kicked_back)) {
-			game.scores++;
+		if ((!game.hardcore) && (game.tetramino_landed) && (game.kicked_back)) {
+
+			if (game.got_food) {
+				game.scores+=3;
+			}
+			else {
+				game.scores++;
+			}
 			next_pitch();
 		}
 	}
@@ -3173,7 +3207,7 @@ private void prev_tetr_rot() {
 					}
 					else {
 						game.easy_mode_state = 3;
-						if (!game.got_food) game_over(12);
+						game.tetramino_landed = true;
 					}
 				}
 				if (game.tetramino_y == 0) {
@@ -3192,7 +3226,7 @@ private void prev_tetr_rot() {
 							;
 						}
 						game.easy_mode_state = 3;
-						if (!game.got_food) game_over(13);
+						game.tetramino_landed = true;
 					}
 				}
 
@@ -3204,7 +3238,7 @@ private void prev_tetr_rot() {
 						;
 					}
 					game.easy_mode_state = 3;
-					if (!game.got_food) game_over(14);
+					game.tetramino_landed = true;
 				}
 
 				if (game.hardcore) {
@@ -3510,10 +3544,115 @@ private void prev_tetr_rot() {
 		credits.draw();
 	}
 
+	private void repos_everything (int w, int h) {
+		int lbx = (TetrasnakonoidGame.max_width_tiles - game.tetris_w_tiles)/2;
+		spr_tetroborderl.setPosition(lbx* game.tile_size_px + game.vp_x, game.vp_y);
+		spr_tetroborderr.setPosition((lbx + game.tetris_w_tiles)  * game.tile_size_px + game.vp_x, game.vp_y);
+
+		int scw = (game.vp_w - game.tile_size_px*4 - game.tile_size_px*game.tetris_w_tiles)/2;
+		btn_snakel.setPosition(game.vp_x + game.tile_size_px*2,0);
+		btn_snaker.setPosition(game.vp_x + game.tile_size_px*2+scw+ game.tile_size_px*game.tetris_w_tiles,0);
+
+		btn_tetr_move.setPosition(lbx* game.tile_size_px + game.vp_x,0);
+		btn_tetr_rot.setPosition( w - game.vp_x - game.tile_size_px*5,0);
+
+		int gpx = TetrasnakonoidGame.max_width_tiles*game.tile_size_px - (3+3+1)*game.tile_size_px;
+		int gpy = game.tile_size_px*(1+3);
+		btn_gamepadup.setPosition(gpx, gpy + game.tile_size_px*3);
+		btn_gamepaddown.setPosition(gpx, gpy - game.tile_size_px*3);
+		btn_gamepadleft.setPosition(gpx - game.tile_size_px*3, gpy);
+		btn_gamepadright.setPosition(gpx + game.tile_size_px*3, gpy);
+		btn_gamepadrot.setPosition(game.tile_size_px*2, gpy + game.tile_size_px*3/2 - game.tile_size_px*5/2);
+
+		hardcoremark.setPosition(w/2 - btn_hardcore.getWidth()/2, h/2 - btn_hardcore.getHeight()/2);
+	}
+	private void resize_everything(int w, int h) {
+		if ((w<=0) || (h<=0)) return;
+
+		detect_tile_size(h,w);
+		float k = 0.0666f;
+		btn_help.setSize(k*w,k*h);
+		btn_mutesnd.setSize(k*w,k*h);
+		btn_mutemusic.setSize(k*w,k*h);
+		btn_login.setSize(k*w,k*h);
+		btn_donate_btc.setSize(k*w,k*h);
+		btn_donate_ltc.setSize(k*w,k*h);
+		btn_donate_eth.setSize(k*w,k*h);
+		btn_donate_usd.setSize(k*w,k*h);
+		btn_halloffame.setSize(k*w,k*h);
+		btn_rateme.setSize(k*w,k*h);
+
+		btn_hardcore.setSize(0.5104f*w,0.1314f*h);
+
+		btn_new_game.setSize(w,h);
+		img_header.setSize(0.5171f*w, 0.2981f*h);
+
+		spr_protip.setSize(0.221875f*w, 0.05185f*h);
+		hardcorefire.scaleEffect(w/(float) favourite_width,h/(float)favourite_height,1.0f);
+
+		lbl_high_scores_out.setFontScale(w/(float)favourite_width, h/(float)favourite_height);
+		lbl_last_try_out.setFontScale(w/(float)favourite_width, h/(float)favourite_height);
+
+
+		spr_help_background.setSize(w, h);
+		spr_help_overlay.setSize(w, h);
+		spr_easy_help_overlay.setSize(w, h);
+		btn_help_quit.setSize(w, h);
+
+		explosion.scaleEffect(w/(float) favourite_width,h/(float)favourite_height,1.0f);
+		btn_game_over_back.setSize(w,h);
+
+		btn_sharefb.setSize(k*w,k*h);
+		btn_sharetw.setSize(k*w,k*h);
+		btn_sharevk.setSize(k*w,k*h);
+		btn_sharegh.setSize(k*w,k*h);
+
+		lbl_scores_final.setFontScale(w/(float)favourite_width, h/(float)favourite_height);
+		lbl_quote_final.setFontScale(w/(float)favourite_width, h/(float)favourite_height);
+		hardcoremark.setSize(0.5104f*w,0.1314f*h);
+		logo.setSize(0.5171f*w, 0.2981f*h);
+
+		btn_credits_quit.setSize(w,h);
+		lbl_credits.setFontScale(w/(float)favourite_width, h/(float)favourite_height);
+
+		btn_rack.setSize(game.vp_x + game.tile_size_px*5, h);
+		int scw = (game.vp_w - game.tile_size_px*4 - game.tile_size_px*game.tetris_w_tiles)/2;
+		btn_snakel.setSize(scw, h);
+		btn_snaker.setSize(scw, h);
+
+		btn_tetr_move.setSize(game.tetris_w_tiles*game.tile_size_px, w);
+		btn_tetr_rot.setSize(game.vp_x + game.tile_size_px*5, h);
+
+		btn_gamepadup.setSize(game.tile_size_px*3, game.tile_size_px*3);
+		btn_gamepaddown.setSize(game.tile_size_px*3, game.tile_size_px*3);
+
+		btn_gamepadleft.setSize(game.tile_size_px*3, game.tile_size_px*3);
+
+		btn_gamepadright.setSize(game.tile_size_px*3, game.tile_size_px*3);
+
+		btn_gamepadrot.setSize(game.tile_size_px*5, game.tile_size_px*5);
+
+
+		spr_pc_racket.setSize(1.0f*game.tile_size_px, TetrasnakonoidGame.racket_length_tiles * game.tile_size_px);
+		spr_ai_racket.setSize(1.0f*game.tile_size_px, TetrasnakonoidGame.racket_length_tiles * game.tile_size_px);
+		spr_ball.setSize(1.2f*game.k * TetrasnakonoidGame.sprite_tile_size_px, 1.2f*TetrasnakonoidGame.sprite_tile_size_px * game.k);
+		spr_lulz_ball.setSize(1.2f*game.k * TetrasnakonoidGame.sprite_tile_size_px, 1.2f*TetrasnakonoidGame.sprite_tile_size_px * game.k);
+		spr_false_ball.setSize(1.2f*game.k * TetrasnakonoidGame.sprite_tile_size_px, 1.2f*TetrasnakonoidGame.sprite_tile_size_px * game.k);
+		spr_tetrotile.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k); spr_head.setOriginCenter();
+		spr_tetroborderr.setSize(5, game.vp_h);
+		spr_tetroborderl.setSize(5, game.vp_h);
+
+		spr_food.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k);
+		spr_head.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k); spr_head.setOriginCenter();
+		spr_tail.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k); spr_tail.setOriginCenter();
+		spr_body.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k); spr_body.setOriginCenter();
+		spr_anglebody.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k); spr_anglebody.setOriginCenter();
+
+		repos_everything(w,h);
+	}
+
 	@Override
 	public void resize(int width, int height) {
-		detect_tile_size();
-		viewport.update(width, height);
 
 	}
 
@@ -3521,6 +3660,7 @@ private void prev_tetr_rot() {
 	public void render () {
 			Gdx.gl.glClearColor(OLD_TETRIS_COLOR[0], OLD_TETRIS_COLOR[1], OLD_TETRIS_COLOR[2], 1);
 			Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+			if (do_resize_next_frame) {resize_everything(Gdx.graphics.getWidth(), Gdx.graphics.getHeight()); do_resize_next_frame =false ;}
 			handlekbdinput();
 			switch (game_state) {
 				case 0: render_gui();
@@ -3558,6 +3698,7 @@ private void prev_tetr_rot() {
 		help.dispose();
 		gameover.dispose();
 		ingame.dispose();
+		ingameeasy.dispose();
 		explosion.dispose();
 
 		helpup.dispose();
@@ -3597,6 +3738,12 @@ private void prev_tetr_rot() {
 		tetroborder.dispose();
 		tetr_move.dispose();
 		tetr_rot.dispose();
+
+		gamepad_up.dispose();
+		gamepad_down.dispose();
+		gamepad_left.dispose();
+		gamepad_right.dispose();
+		gamepad_rot.dispose();
 
 		help_background.dispose();
 		help_overlay.dispose();
@@ -3755,7 +3902,8 @@ class TetrasnakonoidGame
 	int tetramino_y;
 	float tetris_ani_acc;
 	public boolean tetris_reverse_gravity = false;
-	public boolean got_food = true;
+	public boolean got_food = false;
+	public boolean tetramino_landed = false;
 	public int next_tetramino_dir = 0;
 
 	int difficulty_t;
