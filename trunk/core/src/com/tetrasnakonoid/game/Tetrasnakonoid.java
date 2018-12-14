@@ -3183,10 +3183,9 @@ private void prev_tetr_rot() {
 		game.tetris_ani_acc+=Gdx.graphics.getDeltaTime();
 		int speed = game.tetris_speed_tiles_per_sec + game.difficulty_t;
 		if (game.tetris_ani_acc > 1/(float) speed) {
-			if ((game.next_tetramino_dir == -1) && (tetris_input_check())) {tetramino_move_left();}
-			if ((game.next_tetramino_dir == 1) && (tetris_input_check())) {tetramino_move_right();}
-
 			if ((game.hardcore) || (game.easy_mode_state==2)) {
+				if ((game.next_tetramino_dir == -1) && (tetris_input_check())) {tetramino_move_left();}
+				if ((game.next_tetramino_dir == 1) && (tetris_input_check())) {tetramino_move_right();}
 				tetr_dec();
 				clear_tetramino();
 
@@ -3251,6 +3250,7 @@ private void prev_tetr_rot() {
 				}
 			}
 			game.tetris_ani_acc = 0.0f;
+
 		}
 	}
 
