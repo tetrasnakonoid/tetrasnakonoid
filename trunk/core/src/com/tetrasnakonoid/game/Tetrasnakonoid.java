@@ -341,6 +341,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private void next_pitch() {
 		game.kicked_back = false;
 		game.got_food = false;
+		game.tetramino_landed = false;
 		game.pitch_out = false;
 		game.easy_mode_state = 0;
 		Random rand = new Random();
