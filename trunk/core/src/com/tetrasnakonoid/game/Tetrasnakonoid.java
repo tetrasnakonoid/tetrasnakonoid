@@ -322,7 +322,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 			angle -= 180.0f;
 			game.pc_turn = true;
 		} else {
-			game.ball.x = game.pc.bb.x + game.tile_size_px;
+			game.ball.x = game.pc.bb.x + game.tile_size_px  - game.tile_size_px/5;
 			game.ball.y = game.pc.bb.y;
 			game.pc_turn = false;
 		}
@@ -355,11 +355,11 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 			game.ball.y = game.ai.bb.y;
 			angle -= 180.0f;
 
-			game.false_ball.x = game.pc.bb.x + game.tile_size_px;
+			game.false_ball.x = game.pc.bb.x + game.tile_size_px - game.tile_size_px/5;
 			game.false_ball.y = game.pc.bb.y;
 
 		} else {
-			game.ball.x = game.pc.bb.x + game.tile_size_px;
+			game.ball.x = game.pc.bb.x + game.tile_size_px - game.tile_size_px/5;
 			game.ball.y = game.pc.bb.y;
 
 			game.false_ball.x = game.ai.bb.x - game.tile_size_px;
@@ -571,6 +571,12 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private void init_snake(){
 		game.snake_hunger = 1.2f*game.vp_w;
 		game.difficulty_s = 0;
+		if (game.hardcore) {
+			game.snake_speed_tps = TetrasnakonoidGame.snake_speed_tiles_per_sec;
+		}
+		else {
+			game.snake_speed_tps = TetrasnakonoidGame.snake_speed_tiles_per_sec_easy;
+		}
 		game.snake_ani_acc = 0;
 		game.s_delta = 0;
 		game.s_length = TetrasnakonoidGame.snake_init_length_tiles;
@@ -856,6 +862,12 @@ private void prev_tetr_rot() {
 	}
 	   private void init_tetris(){
 		game.difficulty_t = 0;
+		if (game.hardcore) {
+		 	game.tetris_speed_tps = TetrasnakonoidGame.tetris_speed_tiles_per_sec;
+		}
+		else {
+		   	game.tetris_speed_tps = TetrasnakonoidGame.tetris_speed_tiles_per_sec_easy;
+		}
 		game.tetris_ani_acc  = 0;
 
 		for (int i =0; i < game.tetris_h_tiles+4; ++i) {
@@ -2738,7 +2750,7 @@ private void prev_tetr_rot() {
             game.difficulty_t = k;
         }
         else {
-            int k = game.scores / 5;
+            int k = game.scores / 15;
             game.difficulty_a = k;
             game.difficulty_s = k;
             game.difficulty_t = k;
@@ -3182,7 +3194,8 @@ private void prev_tetr_rot() {
 
 	private void animate_tetris(){
 		game.tetris_ani_acc+=Gdx.graphics.getDeltaTime();
-		int speed = game.tetris_speed_tiles_per_sec + game.difficulty_t;
+
+		int speed = game.tetris_speed_tps  + game.difficulty_t;
 		if (game.tetris_ani_acc > 1/(float) speed) {
 			if ((game.hardcore) || (game.easy_mode_state==2)) {
 				if ((game.next_tetramino_dir == -1) && (tetris_input_check())) {tetramino_move_left();}
@@ -3382,7 +3395,7 @@ private void prev_tetr_rot() {
 					new_game();
 				}
 			}
-			else {
+			if (game_state == 1) {
 				if (!game_over_flag && tflag) {
 					if ((game.easy_mode_state == 2) || (game.hardcore)) {
 						if (check_tetramino_rot()) next_tetr_rot();
@@ -3390,7 +3403,7 @@ private void prev_tetr_rot() {
 				}
 			}
 
-			if (game_over_flag) {
+			if (game_state ==4) {
 				if (TimeUtils.millis() - last_game_over_time > 2000) {
 					first_try = false;
 					game_state = 0;
@@ -3637,8 +3650,8 @@ private void prev_tetr_rot() {
 		spr_pc_racket.setSize(1.0f*game.tile_size_px, TetrasnakonoidGame.racket_length_tiles * game.tile_size_px);
 		spr_ai_racket.setSize(1.0f*game.tile_size_px, TetrasnakonoidGame.racket_length_tiles * game.tile_size_px);
 		spr_ball.setSize(1.2f*game.k * TetrasnakonoidGame.sprite_tile_size_px, 1.2f*TetrasnakonoidGame.sprite_tile_size_px * game.k);
-		spr_lulz_ball.setSize(1.2f*game.k * TetrasnakonoidGame.sprite_tile_size_px, 1.2f*TetrasnakonoidGame.sprite_tile_size_px * game.k);
-		spr_false_ball.setSize(1.2f*game.k * TetrasnakonoidGame.sprite_tile_size_px, 1.2f*TetrasnakonoidGame.sprite_tile_size_px * game.k);
+		spr_lulz_ball.setSize(1.16f*game.k * TetrasnakonoidGame.sprite_tile_size_px, 1.16f*TetrasnakonoidGame.sprite_tile_size_px * game.k);
+		spr_false_ball.setSize(1.16f*game.k * TetrasnakonoidGame.sprite_tile_size_px, 1.16f*TetrasnakonoidGame.sprite_tile_size_px * game.k);
 		spr_tetrotile.setSize(game.k * TetrasnakonoidGame.sprite_tile_size_px, TetrasnakonoidGame.sprite_tile_size_px * game.k); spr_head.setOriginCenter();
 		spr_tetroborderr.setSize(5, game.vp_h);
 		spr_tetroborderl.setSize(5, game.vp_h);
@@ -3875,6 +3888,8 @@ class TetrasnakonoidGame
 	public static final int snake_init_length_tiles_easy = 3;
 	public static final int snake_init_length_tiles = 4;
 	public static final int snake_speed_tiles_per_sec = 5;
+	public static final int snake_speed_tiles_per_sec_easy = 5;
+	public int snake_speed_tps = 0;
 	int s_length;
 	public static final int total_foods = 16;
 	int foodx, foody,food_id;
@@ -3895,7 +3910,9 @@ class TetrasnakonoidGame
 
 	public int tetris_w_tiles = 10;
 	public int tetris_h_tiles = 20;
-	public int tetris_speed_tiles_per_sec = 5;
+	public static final int tetris_speed_tiles_per_sec = 5;
+	public static final int tetris_speed_tiles_per_sec_easy = 3;
+	public int tetris_speed_tps = 0;
 	int[][] blocks;
 	int tetramino_type;
 	int tetramino_rot;
