@@ -893,7 +893,7 @@ private void prev_tetr_rot() {
 		   }
 		}
 		game.next_tetramino_dir = 0;
-		if (game.hardcore) next_tetramino();
+		if (game.hardcore) next_tetramino(); else game.tetramino_request = false;
 
 		spr_tetrotile.setColor(game.t_color);
 
