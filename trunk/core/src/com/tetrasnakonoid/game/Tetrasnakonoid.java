@@ -337,8 +337,11 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		game.ball.last_col_x = -50;
 		game.ball.last_col_y = -50;
 	}
+    private void next_pitch() {
+	    next_pitch(false);
+    }
 
-	private void next_pitch() {
+	private void next_pitch(boolean pitch_out) {
 		int max = game.vp_h - game.ai.bb.h;
 		int min = game.ai.bb.h;
 		if (game.first_pitch) {
@@ -391,7 +394,9 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		game.ball.last_col = TimeUtils.millis();
 		game.ball.last_col_x = -50;
 		game.ball.last_col_y = -50;
-		next_easy_snake();
+		if (!pitch_out) {
+            next_easy_snake();
+        }
 	}
 
 	private void init_ball() {
@@ -1022,7 +1027,10 @@ private void prev_tetr_rot() {
 
 
 	private void game_over(int source){
-		if (DEBUG) {Gdx.app.debug(LOG_TAG, "Gameover reason: " + source);}
+		if (DEBUG) {
+			Gdx.app.debug(LOG_TAG, "Gameover reason: " + source);
+			if (source == -1) { new_game(); return;}
+		}
 
 		game_state = 4;
 		Gdx.input.setInputProcessor(gameover);
@@ -2587,7 +2595,7 @@ private void prev_tetr_rot() {
 
 				if ((game.pitch_out) && (game.ball.x < (x-3)*game.tile_size_px)) {
 				    game.outs_in_a_row++; if (game.outs_in_a_row>11) game_over(17);
-					next_pitch();
+					next_pitch(true);
 				}
 			}
 			else {
@@ -2597,7 +2605,7 @@ private void prev_tetr_rot() {
 
 				if ((game.pitch_out) && (game.ball.x > (x+3+TetrasnakonoidGame.tetris_w_tiles_easy)*game.tile_size_px)) {
                     game.outs_in_a_row++; if (game.outs_in_a_row>11) game_over(17);
-					next_pitch();
+					next_pitch(true);
 				}
 			}
 
@@ -3163,14 +3171,14 @@ private void prev_tetr_rot() {
 			else {
 				int mli = find_middle_line_index();
 				if (game.tetris_reverse_gravity) {
-					for (int i = mli; i < lineid - 1; ++i) {
+					for (int i = mli; i < lineid; ++i) {
 						for (int j = 0; j < game.tetris_w_tiles; ++j) {
 							game.blocks[i][j] = game.blocks[i - 1][j];
 						}
 					}
 				}
 				else {
-					for (int i = lineid; i < mli - 1; ++i) {
+					for (int i = lineid; i < mli; ++i) {
 						for (int j = 0; j < game.tetris_w_tiles; ++j) {
 							game.blocks[i][j] = game.blocks[i + 1][j];
 						}
