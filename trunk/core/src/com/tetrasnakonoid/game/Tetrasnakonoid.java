@@ -51,7 +51,8 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	public static final String self_name = "Tetransnakonoid 9000 PRO";
 	public static final int Answer = 42;
 	public static final String version = "v9000.1";
-	public static final String corporation = "One Man Company That Makes Everything";
+	public static final String corporation = "One Man Company that Makes Everything";
+	public static final String corporation_acronym = "OMCME";
 	public static final String mailto = "fuck@tetrasnakonoid.ru";
 	
 	public static final int favourite_width = 1920;	
@@ -168,7 +169,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	private static final String donateLTCURI = "https://tetrasnakonoid.ru/donate/ltc";
 	private static final String donateETHURI = "https://tetrasnakonoid.ru/donate/eth";
 	private static final String donateUSDURI = "https://tetrasnakonoid.ru/donate/usd";
-	private static final String halloffameURI = "https://tetrasnakonoid.ru/backers/new";
+	private static final String halloffameURI = "https://tetrasnakonoid.ru/backers";
 
 	private static final String ETHWallet = "ETH: 0x7d3935e9b579a53B23d1BC14C23fdDafE9f3d522";
 	private static final String BTCWallet = "BTC: 18gm58hZ7avF18tvhoQmEEkKFTeh2WANoG";
@@ -312,7 +313,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 	
 	private void next_ball() {
 		Random rand = new Random();
-		game.ball.v = 0.25f * game.vp_w + 0.1f*game.difficulty_a;
+		game.ball.v = TetrasnakonoidGame.ball_speed_viewports_per_sec * game.vp_w + 0.1f*game.difficulty_a;
 
 		float angle = 30.0f + (float) (Math.random() * ((150.0f - 30.0f) + 1.0f)) - 90.0f;
 
@@ -363,8 +364,7 @@ public class Tetrasnakonoid extends ApplicationAdapter implements ApplicationLis
 		game.pitch_out = false;
 		game.easy_mode_state = 0;
 		Random rand = new Random();
-		game.ball.v = 0.25f * game.vp_w + 0.1f*game.difficulty_a;
-		game.ball.v *=0.4;
+		game.ball.v = TetrasnakonoidGame.ball_speed_viewports_per_sec_easy * game.vp_w + 0.1f*game.difficulty_a;
 
 		float angle = 30.0f + (float) (Math.random() * ((150.0f - 30.0f) + 1.0f)) - 90.0f;
 		game.pc_pitcher = rand.nextBoolean();
@@ -3918,9 +3918,12 @@ class TetrasnakonoidGame
 	public int vp_x, vp_y;
 
 	public static final int racket_length_tiles = 5;
-	Rect[] wall;
-	Racket pc, ai;
+	public Rect[] wall;
+	public Racket pc, ai;
 	public static final int racket_speed_tiles_sec = 7;
+	public static final float ball_speed_viewports_per_sec = 0.15f;
+	public static final float ball_speed_viewports_per_sec_easy = 0.1f;
+
 	Ball ball, lulz_ball, false_ball;
 	int difficulty_a;
 	public Color a_color;
@@ -3941,7 +3944,7 @@ class TetrasnakonoidGame
 
 	public static final int snake_init_length_tiles_easy = 3;
 	public static final int snake_init_length_tiles = 4;
-	public static final int snake_speed_tiles_per_sec = 5;
+	public static final int snake_speed_tiles_per_sec = 4;
 	public static final int snake_speed_tiles_per_sec_easy = 5;
 	public int snake_speed_tps = 0;
 	int s_length;
@@ -3954,7 +3957,7 @@ class TetrasnakonoidGame
 	float snake_ani_acc, snake_col_acc;
 	float s_delta;
 	public int next_snake_dir = 0;
-	public float snake_hunger = 1920;
+	public float snake_hunger = Tetrasnakonoid.favourite_width;
 
 	public static final int tetris_w_tiles_easy = 18;
 	public static final int tetris_h_tiles_easy = 20;
@@ -3964,7 +3967,7 @@ class TetrasnakonoidGame
 
 	public int tetris_w_tiles = 10;
 	public int tetris_h_tiles = 20;
-	public static final int tetris_speed_tiles_per_sec = 5;
+	public static final int tetris_speed_tiles_per_sec = 4;
 	public static final int tetris_speed_tiles_per_sec_easy = 3;
 	public int tetris_speed_tps = 0;
 	int[][] blocks;
